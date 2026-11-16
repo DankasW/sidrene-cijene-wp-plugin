@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.8
+ * Version: 2.9
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -81,13 +81,18 @@ function cjenik_auto_parse_feeds($raw) {
     return $feeds;
 }
 
-// Google za privatne tablice zna vratiti HTML stranicu za prijavu umjesto CSV-a
 // Treba li automatska provjera ovog cjenika sada: unutar dnevnog prozora i danas još nije uspjela.
 // Promjene u tablici nakon današnje provjere čekaju sutrašnju objavu.
 function cjenik_auto_due($hour, $today, $done) {
     return $hour >= CJENIK_FROM_HOUR && $hour < CJENIK_UNTIL_HOUR && $done !== $today;
 }
 
+// Jutarnja provjera danas nije pokrenuta (npr. nitko nije otvorio stranicu između FROM i UNTIL sati)
+function cjenik_auto_missed($hour, $today, $done) {
+    return $hour >= CJENIK_UNTIL_HOUR && $done !== $today;
+}
+
+// Google za privatne tablice zna vratiti HTML stranicu za prijavu umjesto CSV-a
 function cjenik_auto_is_csv($body) {
     $body = ltrim($body, "\xEF\xBB\xBF \t\r\n");
     return $body !== '' && $body[0] !== '<';
@@ -141,8 +146,12 @@ function cjenik_auto_run($manual = false) {
 
     foreach ($feeds as $feed) {
         $key = $feed['error'] ? '' : cjenik_auto_key($feed['oib'], $feed['mjesto'], $feed['vrsta']);
-        if (!$manual && !cjenik_auto_due($hour, $today, $done[$key] ?? '')) continue;
+        // Propuštena jutarnja provjera: samo usporedi tablicu i upozori ako ima neobjavljenih promjena, ne objavljuj
+        // (tablica popodne već može imati cijene za sutra). Bez promjena stari cjenik i dalje vrijedi, pa nema upozorenja.
+        $missed = !$manual && cjenik_auto_missed($hour, $today, $done[$key] ?? '');
+        if (!$manual && !$missed && !cjenik_auto_due($hour, $today, $done[$key] ?? '')) continue;
         $checked++;
+        if ($missed) $done[$key] = $today; // najviše jedna takva usporedba dnevno
         if ($feed['error']) {
             $errors[] = sprintf('Redak %d u postavkama nije ispravan: %s. Ništa nije objavljeno.', $feed['line'], $feed['error']);
             continue;
@@ -165,6 +174,15 @@ function cjenik_auto_run($manual = false) {
             if (($e['key'] ?? '') === $key && empty($e['replaced'])) $current = $i;
         }
         if ($current !== null && $log[$current]['hash'] === $hash) continue; // nema promjene, nema nove objave
+        if ($missed) {
+            $errors[] = sprintf(
+                '%s: tablica ima neobjavljene promjene, a jutros između %d i %d sati provjera nije pokrenuta (stranicu nitko nije otvorio). '
+                . 'Ako nove cijene vrijede već danas, kliknite "Provjeri i objavi sada" u postavkama. Inače se objavljuju sutra ujutro. '
+                . 'Da se ovo ne ponavlja, postavite cron (upute u README.md).',
+                $feed['label'], CJENIK_FROM_HOUR, CJENIK_UNTIL_HOUR
+            );
+            continue;
+        }
 
         $broj = ($counters[$key] ?? 0) + 1;
         $counters[$key] = $broj;

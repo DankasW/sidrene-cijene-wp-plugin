@@ -16,6 +16,7 @@ check(cjenik_auto_key($oib, 'Prodavaonica Kutnjački put 11 PM1', 'USLUGA') === 
 check(cjenik_auto_build_filename("{$oib}_X_ROBA", 7, '20261117', '0600') === "{$oib}_X_ROBA_0007_20261117_0600.csv", 'broj pohrane i GGGGMMDD_SSMM');
 check(!cjenik_auto_is_csv("<!DOCTYPE html><html>"), 'HTML login stranica se odbija');
 check(!cjenik_auto_due(5, '20261117', '') && cjenik_auto_due(6, '20261117', '20261116') && !cjenik_auto_due(9, '20261117', '20261117') && !cjenik_auto_due(11, '20261117', ''), 'objava jednom dnevno, 6-11 sati');
+check(cjenik_auto_missed(14, '20261117', '20261116') && !cjenik_auto_missed(14, '20261117', '20261117') && !cjenik_auto_missed(10, '20261117', ''), 'propuštena jutarnja provjera se prepoznaje poslije 11');
 check(cjenik_auto_to_semicolon_csv("CJENIK,,\nNAZIV,CIJENA,JM\n,,\nKnjiga,10,KOM\n") === "\xEF\xBB\xBFNAZIV;CIJENA;JM\nKnjiga;10;KOM\n", 'naslov iznad tablice i prazni redovi se preskaču');
 
 $feeds = cjenik_auto_parse_feeds("# x\n\nA|$oib|ZA_SVA_PRODAJNA_MJESTA|roba|U\nStari|UDRUGA|Adresa|001|U\nB|$oib|M|ROBE|U");

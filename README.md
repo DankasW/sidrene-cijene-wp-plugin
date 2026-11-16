@@ -213,6 +213,12 @@ može svaki sat otvoriti adresu
 serveru. Dovoljno je i da netko između 6 i 11 sati otvori stranicu ili
 se prijavi u WordPress admin, jer i to pokreće provjeru.
 
+Ako jutarnja provjera izostane, a tablica se nije mijenjala, ništa se
+ne događa: stari cjenik i dalje vrijedi. Ako je tablica promijenjena,
+plugin kod prvog posjeta nakon 11 sati ništa ne objavljuje, nego pošalje
+upozorenje e-mailom i prikaže ga u postavkama. Tada sami odlučite hoćete
+li kliknuti "Provjeri i objavi sada" ili pričekati sljedeće jutro.
+
 **Ne postavljati** `DISABLE_WP_CRON` u `wp-config.php` ako serverski
 cron ne radi barem svakih nekoliko minuta: to zaustavlja zakazane
 zadatke svih pluginova, npr. UpdraftPlus sigurnosne kopije (isprobano
