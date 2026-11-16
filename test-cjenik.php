@@ -53,6 +53,7 @@ update_option(CJENIK_OPTION_EMAIL, 'ja@primjer.hr, ona@primjer.hr');
 check(cjenik_auto_alert_email() === 'ja@primjer.hr, ona@primjer.hr', 'upozorenje ide na adrese iz postavki');
 delete_option(CJENIK_OPTION_EMAIL);
 check(cjenik_auto_alert_email() === get_option('admin_email'), 'prazno polje: upozorenje ide administratoru');
+$mails = array_slice($mails, 0, 1); // pozdravne mailove iz ovog bloka testiramo zasebno niže
 
 update_option(CJENIK_OPTION_FEEDS, "Knjige|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|$src_url");
 [$errors, $n] = cjenik_auto_run();
@@ -104,6 +105,17 @@ check($n === 1 && count(array_unique(array_column(get_option(CJENIK_OPTION_LOG),
 update_option(CJENIK_OPTION_FEEDS, "Google|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|$google_url");
 [$errors, $n] = cjenik_auto_run();
 check($errors === [] && $n === 1, 'stvarna Google tablica se objavljuje');
+
+// pozdravni mail samo novim adresama, sa stanjem objave
+delete_option(CJENIK_OPTION_EMAIL);
+$mails = [];
+update_option(CJENIK_OPTION_EMAIL, 'ja@primjer.hr');
+check(count($mails) === 1 && $mails[0]['to'] === 'ja@primjer.hr' && strpos($mails[0]['message'], 'VAŽEĆI') !== false && strpos($mails[0]['message'], '/objava-cjenika/') !== false, 'nova adresa: pozdravni mail sa stanjem');
+update_option(CJENIK_OPTION_EMAIL, 'ja@primjer.hr, ona@primjer.hr');
+check(count($mails) === 2 && $mails[1]['to'] === 'ona@primjer.hr', 'dodana druga adresa: mail samo njoj');
+update_option(CJENIK_OPTION_EMAIL, 'ona@primjer.hr');
+check(count($mails) === 2, 'uklanjanje adrese: nema maila');
+delete_option(CJENIK_OPTION_EMAIL);
 
 $html = cjenik_auto_render_list();
 check(strpos($html, 'važeći') !== false && strpos($html, 'Knjige') !== false && strpos($html, 'Usluge') !== false, 'popis prikazuje sve cjenike i oznaku važeći');

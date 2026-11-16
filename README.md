@@ -131,9 +131,15 @@ javlja se najviše jednom dnevno, a dosadašnji cjenik za to vrijeme
 ostaje objavljen. Na stranici postavki vidi se i **zadnja provjera bez
 grešaka** te zadnja greška, ako je bilo.
 
+Kad se u polje doda i spremi **nova** adresa, samo ona odmah dobije
+pozdravni e-mail s trenutnim stanjem: važeći i arhivski cjenici s
+linkovima te zadnja provjera. Tako se odmah vidi da poruke stižu.
+Postojeće adrese pri spremanju ne dobivaju ništa.
+
 Za slanje se koristi WordPressov e-mail (`wp_mail`), pa poruke stižu
 samo ako stranica uopće može slati e-mail (to je isti put kojim stižu
-npr. poruke za reset lozinke).
+npr. poruke za reset lozinke). Ako je instaliran plugin poput WP Mail
+SMTP, poruke idu preko pošiljatelja postavljenog u njemu.
 
 ## Stupci u Google tablici (čl. 3. pravilnika)
 

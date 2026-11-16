@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Svaki sat provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.3
+ * Version: 2.4
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -196,6 +196,38 @@ function cjenik_auto_sanitize_emails($raw) {
 function cjenik_auto_alert_email() {
     return get_option(CJENIK_OPTION_EMAIL, '') ?: get_option('admin_email');
 }
+
+function cjenik_auto_status_text() {
+    $status = get_option(CJENIK_OPTION_STATUS, []);
+    $lines = [];
+    foreach (get_option(CJENIK_OPTION_LOG, []) as $e) {
+        $state = !isset($e['key']) ? 'stari format' : (empty($e['replaced']) ? 'VAŽEĆI' : 'zamijenjen ' . date_i18n('d.m.Y. H:i', $e['replaced']));
+        $lines[] = sprintf("- %s, objavljen %s (%s)\n  %s", $e['label'], date_i18n('d.m.Y. H:i', $e['timestamp']), $state, $e['url']);
+    }
+    $text = "Stranica s cjenicima: " . home_url('/objava-cjenika/') . "\n\n"
+        . ($lines ? "Objavljeni cjenici:\n" . implode("\n", $lines) : 'Još nema objavljenih cjenika.') . "\n\n"
+        . 'Zadnja provjera bez grešaka: ' . (!empty($status['last_ok']) ? date_i18n('d.m.Y. H:i', $status['last_ok']) : 'još nije bilo');
+    if (!empty($status['last_error']) && $status['last_error'] > ($status['last_ok'] ?? 0)) {
+        $text .= "\nZadnja provjera NIJE uspjela (" . date_i18n('d.m.Y. H:i', $status['last_error']) . '): ' . $status['last_error_msg'];
+    }
+    return $text;
+}
+
+// Nova adresa za upozorenja dobije pozdravni mail sa stanjem objave, postojeće ne
+function cjenik_auto_welcome_new_emails($old, $new) {
+    $split = fn($s) => array_filter(array_map('trim', explode(',', (string) $s)));
+    foreach (array_diff($split($new), $split($old)) as $to) {
+        wp_mail(
+            $to,
+            sprintf('[%s] Upozorenja o objavi cjenika', wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES)),
+            "Ova adresa dodana je za upozorenja plugina Sidrene cijene na " . home_url('/') . ".\n"
+                . "Javit ćemo vam se ako se cjenik ne može provjeriti ili objaviti (najviše jednom dnevno za istu grešku).\n\n"
+                . "Trenutno stanje:\n\n" . cjenik_auto_status_text()
+        );
+    }
+}
+add_action('update_option_' . CJENIK_OPTION_EMAIL, fn($old, $new) => cjenik_auto_welcome_new_emails($old, $new), 10, 2);
+add_action('add_option_' . CJENIK_OPTION_EMAIL, fn($name, $value) => cjenik_auto_welcome_new_emails('', $value), 10, 2);
 
 // Pamti zadnju uspješnu provjeru; za greške šalje e-mail adminu, ista greška najviše jednom dnevno
 function cjenik_auto_record_status($errors, $now) {
