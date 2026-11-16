@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Svaki sat provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.2
+ * Version: 2.3
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -12,6 +12,8 @@ if (!defined('ABSPATH')) exit;
 define('CJENIK_OPTION_FEEDS', 'cjenik_auto_feeds');
 define('CJENIK_OPTION_LOG', 'cjenik_auto_log');
 define('CJENIK_OPTION_COUNTERS', 'cjenik_auto_counters');
+define('CJENIK_OPTION_STATUS', 'cjenik_auto_status');
+define('CJENIK_OPTION_EMAIL', 'cjenik_auto_email');
 define('CJENIK_SUBDIR', 'cjenici');
 define('CJENIK_RETENTION_DAYS', 15); // pravilnik: arhivski cjenik dostupan 15 dana od zamjene
 define('CJENIK_HOOK', 'cjenik_auto_daily_event');
@@ -182,7 +184,45 @@ function cjenik_auto_run() {
         esc_url(home_url('/'))
     ));
 
+    cjenik_auto_record_status($errors, $now);
     return [$errors, $published];
+}
+
+function cjenik_auto_sanitize_emails($raw) {
+    $emails = array_filter(array_map('sanitize_email', explode(',', (string) $raw)), 'is_email');
+    return implode(', ', $emails);
+}
+
+function cjenik_auto_alert_email() {
+    return get_option(CJENIK_OPTION_EMAIL, '') ?: get_option('admin_email');
+}
+
+// Pamti zadnju uspješnu provjeru; za greške šalje e-mail adminu, ista greška najviše jednom dnevno
+function cjenik_auto_record_status($errors, $now) {
+    $status = get_option(CJENIK_OPTION_STATUS, []);
+    $today = gmdate('Ymd', $now); // $now je current_time('timestamp'), već u lokalnom vremenu
+    $mailed = array_filter($status['mailed'] ?? [], fn($day) => $day === $today);
+
+    if (!$errors) {
+        $status['last_ok'] = $now;
+    } else {
+        $status['last_error'] = $now;
+        $status['last_error_msg'] = implode(' ', $errors);
+        $new = array_values(array_filter($errors, fn($e) => !isset($mailed[md5($e)])));
+        if ($new) {
+            wp_mail(
+                cjenik_auto_alert_email(),
+                sprintf('[%s] Cjenik nije objavljen', wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES)),
+                "Plugin Sidrene cijene nije mogao provjeriti ili objaviti cjenik:\n\n- " . implode("\n- ", $new)
+                    . "\n\nDosadašnji cjenik ostaje objavljen. Provjera se ponavlja svaki sat.\nPostavke: "
+                    . admin_url('options-general.php?page=cjenik-auto')
+                    . "\n\nOva poruka za istu grešku stiže najviše jednom dnevno."
+            );
+            foreach ($new as $e) $mailed[md5($e)] = $today;
+        }
+    }
+    $status['mailed'] = $mailed;
+    update_option(CJENIK_OPTION_STATUS, $status);
 }
 
 // Tema ne ispisuje sadržaj stranica, pa na "objava-cjenika" prikazujemo popis koji plugin sam generira (adresa ostaje ista)
@@ -247,6 +287,7 @@ add_action('admin_menu', function () {
 
 add_action('admin_init', function () {
     register_setting('cjenik_auto_group', CJENIK_OPTION_FEEDS, ['sanitize_callback' => 'sanitize_textarea_field']);
+    register_setting('cjenik_auto_group', CJENIK_OPTION_EMAIL, ['sanitize_callback' => 'cjenik_auto_sanitize_emails']);
 });
 
 function cjenik_auto_settings_page() {
@@ -280,6 +321,10 @@ function cjenik_auto_settings_page() {
             <textarea name="<?php echo esc_attr(CJENIK_OPTION_FEEDS); ?>" rows="6" cols="110"><?php
                 echo esc_textarea(get_option(CJENIK_OPTION_FEEDS, ''));
             ?></textarea>
+            <p><label>E-mail za upozorenja (više adresa odvojite zarezom, prazno = administrator stranice):<br>
+                <input type="text" class="regular-text" name="<?php echo esc_attr(CJENIK_OPTION_EMAIL); ?>"
+                    value="<?php echo esc_attr(get_option(CJENIK_OPTION_EMAIL, '')); ?>"
+                    placeholder="<?php echo esc_attr(get_option('admin_email')); ?>"></label></p>
             <?php submit_button('Spremi postavke'); ?>
         </form>
 
@@ -290,6 +335,13 @@ function cjenik_auto_settings_page() {
 
         <p>Tablica se provjerava svaki sat, a nova datoteka objavljuje se samo kad se cjenik promijeni.
             Sljedeća provjera: <strong><?php echo $next ? esc_html(wp_date('d.m.Y. H:i', $next)) : 'nije zakazana'; ?></strong></p>
+        <?php $status = get_option(CJENIK_OPTION_STATUS, []); ?>
+        <p>Zadnja provjera bez grešaka:
+            <strong><?php echo !empty($status['last_ok']) ? esc_html(date_i18n('d.m.Y. H:i', $status['last_ok'])) : 'još nije bilo'; ?></strong>
+            <?php if (!empty($status['last_error']) && $status['last_error'] > ($status['last_ok'] ?? 0)): ?>
+                <br><span style="color:#b32d2e">Zadnja provjera nije uspjela (<?php echo esc_html(date_i18n('d.m.Y. H:i', $status['last_error'])); ?>): <?php echo esc_html($status['last_error_msg']); ?></span>
+            <?php endif; ?>
+            <br><small>Upozorenja o greškama stižu na: <?php echo esc_html(cjenik_auto_alert_email()); ?>, najviše jednom dnevno za istu grešku.</small></p>
 
         <h2>Objavljeni cjenici</h2>
         <?php echo cjenik_auto_render_list(); ?>

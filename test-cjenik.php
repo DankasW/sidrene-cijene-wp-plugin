@@ -36,14 +36,29 @@ update_option(CJENIK_OPTION_FEEDS, "Stari|UDRUGA|Adresa|001|$src_url");
 [$errors, $n] = cjenik_auto_run();
 check(count($errors) === 1 && $n === 0 && empty(get_option(CJENIK_OPTION_LOG)), 'stari format retka: greška, ništa objavljeno');
 
+$mails = [];
+add_filter('pre_wp_mail', function ($null, $atts) use (&$mails) { $mails[] = $atts; return true; }, 10, 2);
+delete_option(CJENIK_OPTION_STATUS);
+
 update_option(CJENIK_OPTION_FEEDS, "Privatna|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|$bad_url");
 [$errors, $n] = cjenik_auto_run();
 check(count($errors) === 1 && $n === 0, 'privatna tablica: greška, ništa objavljeno');
+check(count($mails) === 1 && $mails[0]['to'] === get_option('admin_email') && strpos($mails[0]['message'], 'Privatna') !== false, 'greška: e-mail adminu');
+cjenik_auto_run();
+check(count($mails) === 1, 'ista greška isti dan: nema drugog e-maila');
+$status = get_option(CJENIK_OPTION_STATUS);
+check(!empty($status['last_error']) && empty($status['last_ok']), 'status pamti zadnju grešku');
+check(cjenik_auto_sanitize_emails('ja@primjer.hr, krivo, ona@primjer.hr') === 'ja@primjer.hr, ona@primjer.hr', 'e-mail polje: više adresa, neispravne izbačene');
+update_option(CJENIK_OPTION_EMAIL, 'ja@primjer.hr, ona@primjer.hr');
+check(cjenik_auto_alert_email() === 'ja@primjer.hr, ona@primjer.hr', 'upozorenje ide na adrese iz postavki');
+delete_option(CJENIK_OPTION_EMAIL);
+check(cjenik_auto_alert_email() === get_option('admin_email'), 'prazno polje: upozorenje ide administratoru');
 
 update_option(CJENIK_OPTION_FEEDS, "Knjige|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|$src_url");
 [$errors, $n] = cjenik_auto_run();
 $log = get_option(CJENIK_OPTION_LOG);
 check($errors === [] && $n === 1 && strpos($log[0]['file'], "{$oib}_ZA_SVA_PRODAJNA_MJESTA_ROBA_0001_") === 0, 'prva objava, broj pohrane 0001');
+check(!empty(get_option(CJENIK_OPTION_STATUS)['last_ok']) && count($mails) === 1, 'uspješna provjera: zabilježena, bez e-maila');
 $path0 = trailingslashit(wp_upload_dir()['basedir']) . 'cjenici/' . $log[0]['file'];
 check(strpos(file_get_contents($path0), 'Knjiga;10,00') !== false, 'objavljena datoteka koristi točku-zarez');
 check(wp_remote_retrieve_response_code(wp_remote_get($log[0]['url'])) === 200, 'datoteka je javno dostupna na webu');

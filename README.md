@@ -120,6 +120,21 @@ Neispravan redak plugin prijavi na stranici postavki i za njega ništa
 ne objavljuje. Gumb **"Provjeri i objavi sada"** odmah provjeri tablicu
 i objavi samo ako se cjenik promijenio.
 
+### Upozorenja e-mailom
+
+Ako provjera ne uspije (tablica više nije javna, Google ne odgovara,
+neispravan redak u postavkama), plugin šalje e-mail. Adrese se upisuju
+u polje **"E-mail za upozorenja"**, više njih odvojenih zarezom (npr.
+vi, web administrator i netko iz financija). Ako je polje prazno, poruka
+ide na e-mail administratora stranice (Settings → General). Ista greška
+javlja se najviše jednom dnevno, a dosadašnji cjenik za to vrijeme
+ostaje objavljen. Na stranici postavki vidi se i **zadnja provjera bez
+grešaka** te zadnja greška, ako je bilo.
+
+Za slanje se koristi WordPressov e-mail (`wp_mail`), pa poruke stižu
+samo ako stranica uopće može slati e-mail (to je isti put kojim stižu
+npr. poruke za reset lozinke).
+
 ## Stupci u Google tablici (čl. 3. pravilnika)
 
 Plugin stupce prenosi kakvi jesu, pa redoslijed mora biti točan već u
