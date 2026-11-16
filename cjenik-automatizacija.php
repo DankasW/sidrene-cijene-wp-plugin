@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Cjenik Automatizacija (bazne cijene)
- * Description: Svaki sat provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026). Odgovorna osoba: Daniel Wurzberg, Udruga Fokus. Upute: README.md u mapi plugina.
+ * Description: Svaki sat provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Odgovorna osoba: Daniel Wurzberg, Udruga Fokus. Upute: README.md u mapi plugina.
  * Version: 2.0
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later

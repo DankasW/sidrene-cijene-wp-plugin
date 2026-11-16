@@ -7,6 +7,26 @@ propisanim nazivom, stupci odvojeni znakom `;`, nova objava kad se
 cjenik promijeni i arhiva zamijenjenih cjenika. Napravljen za Udrugu
 Fokus (ufokus.hr), slobodan za korištenje pod licencom GPL-2.0-or-later.
 
+## Pravni okvir
+
+Plugin je usklađen s propisima objavljenim u Narodnim novinama, stanje
+na dan 16. studenoga 2026.:
+
+- **Pravilnik o načinu objave cjenika proizvoda**, NN 132/2026 (1584),
+  na snazi od 17.11.2026.:
+  [PDF](https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf),
+  [web](https://narodne-novine.nn.hr/clanci/sluzbeni/2026_11_132_1584.html)
+- **Pravilnik o isticanju bazne cijene proizvoda**, NN 132/2026 (1583),
+  na snazi od 17.11.2026.:
+  [PDF](https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1583/pdf),
+  [web](https://narodne-novine.nn.hr/clanci/sluzbeni/2026_11_132_1583.html)
+- Oba su donesena na temelju **Zakona o zaštiti potrošača**
+  (NN 19/22, 59/23, 59/26).
+- Objašnjenje Ministarstva gospodarstva:
+  [Pravilnici o baznim cijenama i objavi cjenika](https://mingo.gov.hr/vijesti/pravilnici-o-baznim-cijenama-i-objavi-cjenika-veca-transparentnost-za-potrosace-provediva-pravila-za-gospodarstvo/10490)
+
+Ako se propisi izmijene, plugin treba ponovno provjeriti.
+
 > **Nije pravni savjet.** Plugin smo uskladili s tekstom pravilnika
 > onako kako ga razumijemo. Provjerite sami odnosi li se pravilnik na
 > vas i jesu li vaši podaci (stupci, cijene, prodajna mjesta) ispravni.
