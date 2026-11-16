@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Svaki sat provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.6
+ * Version: 2.7
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -87,9 +87,13 @@ function cjenik_auto_to_semicolon_csv($body) {
     fwrite($in, preg_replace('/^\xEF\xBB\xBF/', '', $body));
     rewind($in);
     $out = fopen('php://temp', 'r+');
+    $header = false;
     while (($row = fgetcsv($in, 0, ',', '"', '')) !== false) {
         $row = array_map(fn($c) => trim(preg_replace('/\s*[\r\n]+\s*/', ' ', (string) $c)), $row);
         if (implode('', $row) === '') continue;
+        // Naslov iznad tablice (npr. "CJENIK" u A1) se preskače: prvi red s barem dva stupca su naslovi stupaca.
+        if (!$header && count(array_filter($row, 'strlen')) < 2) continue;
+        $header = true;
         fputcsv($out, $row, ';', '"', '', "\n");
     }
     rewind($out);
