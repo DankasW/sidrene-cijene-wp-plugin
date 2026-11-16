@@ -90,6 +90,28 @@ Primjer:
 Knjige i priručnici|12345678901|ZA_SVA_PRODAJNA_MJESTA|ROBA|https://docs.google.com/spreadsheets/d/ID/export?format=csv
 ```
 
+### Roba i usluge: dva cjenika
+
+Ako nudite i robu i usluge, pravilnik traži **dva odvojena cjenika**
+(dvije datoteke s različitim stupcima). U postavkama su to dva retka,
+jedan s `ROBA`, drugi s `USLUGA`. Podatke možete držati na dva načina:
+
+- **Dvije zasebne Google tablice**: svaki redak ima link svoje tablice.
+- **Jedna tablica s dva taba**: oba retka imaju isti link, ali svaki
+  s `&gid=<ID taba>` na kraju. ID taba vidi se u adresnoj traci kad
+  je tab otvoren (`...#gid=123456789`).
+
+Link **bez** `gid` uvijek uzima **prvi** tab. Ako tablica ima više
+tabova, a `gid` izostavite, oba retka objavila bi isti (prvi) tab.
+
+```
+Knjige|12345678901|ZA_SVA_PRODAJNA_MJESTA|ROBA|https://docs.google.com/spreadsheets/d/ID/export?format=csv&gid=0
+Seminari|12345678901|ZA_SVA_PRODAJNA_MJESTA|USLUGA|https://docs.google.com/spreadsheets/d/ID/export?format=csv&gid=987654321
+```
+
+(`gid=0` u primjeru vrijedi samo ako prvi tab stvarno ima ID 0, što
+nije uvijek slučaj. Uvijek ga prepišite iz adresne trake.)
+
 Neispravan redak plugin prijavi na stranici postavki i za njega ništa
 ne objavljuje. Gumb **"Provjeri i objavi sada"** odmah provjeri tablicu
 i objavi samo ako se cjenik promijenio.
