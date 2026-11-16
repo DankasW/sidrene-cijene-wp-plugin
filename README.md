@@ -207,6 +207,12 @@ wget -q -O /dev/null "https://www.ufokus.hr/wp-cron.php?doing_wp_cron"
 
 (Na drugoj stranici zamijenite `www.ufokus.hr` svojom domenom.)
 
+**Nemate cPanel?** Besplatni servis poput [cron-job.org](https://cron-job.org)
+može svaki sat otvoriti adresu
+`https://www.vasa-stranica.hr/wp-cron.php?doing_wp_cron`, bez pristupa
+serveru. Dovoljno je i da netko između 6 i 11 sati otvori stranicu ili
+se prijavi u WordPress admin, jer i to pokreće provjeru.
+
 **Ne postavljati** `DISABLE_WP_CRON` u `wp-config.php` ako serverski
 cron ne radi barem svakih nekoliko minuta: to zaustavlja zakazane
 zadatke svih pluginova, npr. UpdraftPlus sigurnosne kopije (isprobano
