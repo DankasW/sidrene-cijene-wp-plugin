@@ -50,7 +50,8 @@ bilo kakve izmjene.
    kliknite "Provjeri i objavi sada".
 4. Napravite WordPress stranicu s adresom (slugom) `objava-cjenika` i
    stavite link na nju u footer.
-5. Po želji postavite serverski cron (vidi "Pokretanje").
+5. Preporučeno: postavite serverski ili besplatni vanjski cron (vidi
+   "Pokretanje"), da jutarnja objava ne ovisi o posjetima stranici.
 
 ## Što radi
 
@@ -126,7 +127,9 @@ i objavi samo ako se cjenik promijenio.
 ### Upozorenja e-mailom
 
 Ako provjera ne uspije (tablica više nije javna, Google ne odgovara,
-neispravan redak u postavkama), plugin šalje e-mail. Adrese se upisuju
+neispravan redak u postavkama) ili jutarnja provjera izostane, a
+tablica ima neobjavljene promjene (vidi "Pokretanje"), plugin šalje
+e-mail. Adrese se upisuju
 u polje **"E-mail za upozorenja"**, više njih odvojenih zarezom (npr.
 vi, web administrator i netko iz financija). Ako je polje prazno, poruka
 ide na e-mail administratora stranice (Settings → General). Ista greška
@@ -243,7 +246,8 @@ provjere nestaje i s popisa (nema neispravnih linkova).
 ## Testovi (lokalno)
 
 `test-cjenik.php` (nije na serveru) provjerava nazive datoteka,
-pretvorbu u točku-zarez, objavu samo kod promjene, broj pohrane,
+pretvorbu u točku-zarez, preskakanje naslova iznad tablice, dnevni
+prozor objave (6 do 11 sati), objavu samo kod promjene, broj pohrane,
 arhivu i odbijanje privatne tablice:
 
 ```
@@ -251,3 +255,19 @@ wp eval-file test-cjenik.php <javni_google_csv_link> <link_koji_nije_csv>
 ```
 
 Briše zapise objava, zato se pokreće samo na lokalnoj kopiji stranice.
+
+## Verzije
+
+Manje izmjene dižu broj za mali korak (2.9, 2.91, 2.92...). Verzija 3.0
+dolazi tek uz veću promjenu u radu plugina.
+
+- **2.9**: upozorenje kad jutarnja provjera izostane, a tablica ima
+  neobjavljene promjene. Bez promjena nema upozorenja.
+- **2.8**: objava jednom dnevno u 6 sati (ponovni pokušaji do 11).
+  Izmjene tijekom dana objavljuju se sljedeće jutro, gumb objavljuje
+  odmah.
+- **2.7**: naslov iznad tablice (npr. "CJENIK") se preskače.
+- **2.6**: logo.
+- **2.5**: upozorenje u postavkama kad stranica ne može slati e-mail.
+
+Starije promjene: povijest commitova na GitHubu.
