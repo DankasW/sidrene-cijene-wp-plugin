@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Cjenik Automatizacija (bazne cijene)
+ * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Svaki sat provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.1
+ * Version: 2.2
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -242,7 +242,7 @@ function cjenik_auto_render_list() {
 // ---------- Admin ----------
 
 add_action('admin_menu', function () {
-    add_options_page('Cjenik Automatizacija', 'Cjenik Automatizacija', 'manage_options', 'cjenik-auto', 'cjenik_auto_settings_page');
+    add_options_page('Sidrene cijene', 'Sidrene cijene', 'manage_options', 'cjenik-auto', 'cjenik_auto_settings_page');
 });
 
 add_action('admin_init', function () {
@@ -268,7 +268,7 @@ function cjenik_auto_settings_page() {
     $next = wp_next_scheduled(CJENIK_HOOK);
     ?>
     <div class="wrap">
-        <h1>Cjenik Automatizacija</h1>
+        <h1>Sidrene cijene: objava cjenika</h1>
         <form method="post" action="options.php">
             <?php settings_fields('cjenik_auto_group'); ?>
             <p>Jedan cjenik po retku:<br>

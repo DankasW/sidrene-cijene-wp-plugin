@@ -1,4 +1,4 @@
-# Cjenik Automatizacija (bazne cijene)
+# Sidrene cijene: WordPress plugin za objavu cjenika
 
 WordPress plugin koji cjenik iz Google Sheeta objavljuje na vašoj
 stranici prema **Pravilniku o načinu objave cjenika proizvoda**
@@ -39,10 +39,13 @@ bilo kakve izmjene.
 ## Instalacija
 
 1. Na GitHubu: **Code → Download ZIP**, pa u WordPressu **Plugins → Add
-   New → Upload Plugin** i aktivirajte.
+   New → Upload Plugin** i aktivirajte. Na popisu pluginova zove se
+   "Sidrene cijene (objava cjenika)".
 2. Google Sheet s cjenikom podijelite kao "Anyone with the link → Viewer".
-3. U **Settings → Cjenik Automatizacija** upišite svoj cjenik (vidi
-   "Postavke") i kliknite "Provjeri i objavi sada".
+3. Nakon aktivacije postavke pluginu su u lijevom izborniku WP admina:
+   **Settings → Sidrene cijene** (hrvatski WordPress: **Postavke →
+   Sidrene cijene**). Tamo upišite svoj cjenik (vidi "Postavke") i
+   kliknite "Provjeri i objavi sada".
 4. Napravite WordPress stranicu s adresom (slugom) `objava-cjenika` i
    stavite link na nju u footer.
 5. Po želji postavite serverski cron (vidi "Pokretanje").
@@ -70,7 +73,7 @@ objavljuje, a dotadašnji cjenik ostaje važeći.
 
 ## Postavke
 
-WP admin → **Settings → Cjenik Automatizacija**. Jedan cjenik po retku:
+WP admin → **Settings → Sidrene cijene** (hrvatski WordPress: Postavke → Sidrene cijene). Jedan cjenik po retku:
 
 ```
 Naslov na stranici|OIB|PRODAJNO MJESTO|ROBA ili USLUGA|CSV_LINK
