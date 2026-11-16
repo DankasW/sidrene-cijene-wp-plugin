@@ -1,14 +1,15 @@
-# Cjenik Automatizacija (sidrene cijene)
+# Cjenik Automatizacija (bazne cijene)
 
-WordPress plugin koji svaki dan automatski objavljuje cjenik iz Google
-Sheeta na vašoj stranici: CSV datoteke s nazivom propisanog oblika,
-povijest od 30 dana i stranica s popisom svih objava. Napravljen za
-Udrugu Fokus (ufokus.hr), slobodan za korištenje pod licencom
-GPL-2.0-or-later.
+WordPress plugin koji cjenik iz Google Sheeta objavljuje na vašoj
+stranici prema **Pravilniku o načinu objave cjenika proizvoda**
+(NN 132/2026, na snazi od 17. studenoga 2026.): CSV datoteka s
+propisanim nazivom, stupci odvojeni znakom `;`, nova objava kad se
+cjenik promijeni i arhiva zamijenjenih cjenika. Napravljen za Udrugu
+Fokus (ufokus.hr), slobodan za korištenje pod licencom GPL-2.0-or-later.
 
-> **Nije pravni savjet.** Format naziva datoteke i stupce cjenika
-> preuzeli smo iz vodiča za objavu cjenika, ne izravno iz propisa.
-> Provjerite sami koja pravila vrijede za vas.
+> **Nije pravni savjet.** Plugin smo uskladili s tekstom pravilnika
+> onako kako ga razumijemo. Provjerite sami odnosi li se pravilnik na
+> vas i jesu li vaši podaci (stupci, cijene, prodajna mjesta) ispravni.
 
 **Autor i održavanje:** Daniel Wurzberg, Udruga Fokus. Hosting i
 suradnici na ufokus.hr: za bilo kakvo pitanje o ovom pluginu, cron jobu
@@ -21,47 +22,88 @@ bilo kakve izmjene.
    New → Upload Plugin** i aktivirajte.
 2. Google Sheet s cjenikom podijelite kao "Anyone with the link → Viewer".
 3. U **Settings → Cjenik Automatizacija** upišite svoj cjenik (vidi
-   "Postavke") i kliknite "Objavi cjenik sada".
+   "Postavke") i kliknite "Provjeri i objavi sada".
 4. Napravite WordPress stranicu s adresom (slugom) `objava-cjenika` i
    stavite link na nju u footer.
-5. U kontrolnoj ploči hostinga (npr. cPanel → Cron Jobs) postavite dnevni
-   poziv u 6:00 (vidi "Pokretanje u 6:00").
+5. Po želji postavite serverski cron (vidi "Pokretanje").
 
 ## Što radi
 
-1. Svaki dan u 6:00 preuzme cjenik iz Google Sheeta (CSV izvoz).
-2. Spremi ga u `wp-content/uploads/cjenici/` pod zakonskim nazivom:
-   `VRSTA_ADRESA_LOKACIJA_VERZIJA_DATUM_VRIJEME.csv`,
-   npr. `UDRUGA_KUTNJACKIPUT11_001_0001_20261117_0600.csv`.
-3. Čuva sve objave 30 dana, starije sam briše.
-4. Na adresi **/objava-cjenika/** (na ufokus.hr:
-   https://www.ufokus.hr/objava-cjenika/) prikazuje popis svih cjenika
-   iz zadnjih 30 dana.
+1. Svaki sat preuzme cjenik iz Google Sheeta (CSV izvoz).
+2. Ako se sadržaj promijenio od zadnje objave, objavi novu datoteku u
+   `wp-content/uploads/cjenici/`. Ako nije, ne radi ništa.
+3. Datoteku pretvara u oblik iz pravilnika: UTF-8, stupci odvojeni
+   točkom-zarezom, bez prijeloma reda unutar ćelija.
+4. Naziv datoteke (čl. 6. pravilnika):
+   `OIB_PRODAJNOMJESTO_ROBA_BROJPOHRANE_GGGGMMDD_SSMM.csv`, npr.
+   `12345678901_ZA_SVA_PRODAJNA_MJESTA_ROBA_0001_20261117_0600.csv`.
+   Broj pohrane raste sa svakom objavom tog cjenika.
+5. Važeći cjenik ostaje objavljen dok ga ne zamijeni novi. Zamijenjeni
+   cjenici ostaju dostupni 30 dana od zamjene (pravilnik traži najmanje 15).
+6. Na adresi **/objava-cjenika/** (na ufokus.hr:
+   https://www.ufokus.hr/objava-cjenika/) prikazuje važeće cjenike i
+   arhivu.
 
 Ako preuzimanje ne uspije (npr. tablica više nije javna), ništa se ne
-objavljuje, a dotadašnji cjenici ostaju na stranici.
+objavljuje, a dotadašnji cjenik ostaje važeći.
 
 ## Postavke
 
 WP admin → **Settings → Cjenik Automatizacija**. Jedan cjenik po retku:
 
 ```
-Naziv lokacije|VRSTA_SUBJEKTA|ADRESA|SIFRA_LOKACIJE|CSV_LINK
+Naslov na stranici|OIB|PRODAJNO MJESTO|ROBA ili USLUGA|CSV_LINK
 ```
 
-- CSV link: `https://docs.google.com/spreadsheets/d/<ID>/export?format=csv`
-- Za pojedini tab tablice dodaje se `&gid=<ID taba>` (vidi se u adresi
-  kad je tab otvoren). Ne pisati `&gid=0` naslijepo.
-- Tablica mora biti dijeljena kao "Anyone with the link → Viewer".
-- Gumb **"Objavi cjenik sada"** odmah radi novu objavu (nova verzija
-  istog dana). Koristiti samo kad se cijene stvarno promijene.
+- **OIB** za pravnu osobu, matični broj za fizičku osobu (samo znamenke).
+- **PRODAJNO MJESTO**: vrsta, adresa i oznaka prodajnog mjesta, npr.
+  `Prodavaonica Kutnjački put 11 PM1`. Ako je cjenik isti na svim
+  prodajnim mjestima, upišite `ZA_SVA_PRODAJNA_MJESTA`.
+- **ROBA** ili **USLUGA**: roba i usluge su odvojeni cjenici, svaki u
+  svom retku (npr. dva taba iste tablice).
+- **CSV link**: `https://docs.google.com/spreadsheets/d/<ID>/export?format=csv`.
+  Za pojedini tab dodaje se `&gid=<ID taba>` (vidi se u adresi kad je
+  tab otvoren). Ne pisati `&gid=0` naslijepo.
 
-Promjena linka ne briše stare objave: one ostaju na popisu 30 dana.
+Primjer:
+```
+Knjige i priručnici|12345678901|ZA_SVA_PRODAJNA_MJESTA|ROBA|https://docs.google.com/spreadsheets/d/ID/export?format=csv
+```
 
-## Pokretanje u 6:00 (važno za hosting)
+Neispravan redak plugin prijavi na stranici postavki i za njega ništa
+ne objavljuje. Gumb **"Provjeri i objavi sada"** odmah provjeri tablicu
+i objavi samo ako se cjenik promijenio.
 
-Objavu pokreće **cron job u cPanelu**, svaki dan u 6:00 po hrvatskom
-vremenu:
+## Stupci u Google tablici (čl. 3. pravilnika)
+
+Plugin stupce prenosi kakvi jesu, pa redoslijed mora biti točan već u
+tablici. Prvi red su naslovi stupaca.
+
+**Roba:**
+`Naziv robe` | `Šifra robe` | `Marka robe` | `Neto količina` |
+`Jedinica mjere` | `Maloprodajna cijena` | `Posebni oblik prodaje (DA/NE)` |
+`Cijena za jedinicu mjere` | `Barkod` | `EAN barkod` | `Bazna cijena`
+
+**Usluge:**
+`Naziv usluge` | `Maloprodajna cijena` | `Posebni oblik prodaje (DA/NE)` |
+`Bazna cijena`
+
+Stupci koji za vas nisu primjenjivi ostaju prazni. Bazna cijena je
+cijena od 2. svibnja 2025. za hranu, piće, kozmetiku, sredstva za
+čišćenje, toaletne potrepštine i proizvode za kućanstvo, a od 10. rujna
+2026. za ostalu robu i usluge (Pravilnik o isticanju bazne cijene
+proizvoda, NN 132/2026). Cijene je najbolje pisati kao broj (`10,00`),
+bez oznake valute, da ih programi lakše čitaju.
+
+## Pokretanje
+
+Plugin radi i **samo s ugrađenim WordPress cronom**: provjera se
+pokreće pri posjetima stranici, najviše jednom na sat. Izmijenjeni
+cjenik mora biti objavljen do 11 sati na dan izmjene, pa to stranicama
+s posjetima redovito stiže.
+
+Za stranice s malo posjeta preporučujemo serverski cron (npr. cPanel →
+Cron Jobs) koji svaki sat poziva WordPress cron:
 
 ```
 wget -q -O /dev/null "https://www.ufokus.hr/wp-cron.php?doing_wp_cron"
@@ -69,11 +111,10 @@ wget -q -O /dev/null "https://www.ufokus.hr/wp-cron.php?doing_wp_cron"
 
 (Na drugoj stranici zamijenite `www.ufokus.hr` svojom domenom.)
 
-WordPressov ugrađeni cron (pokreće se na posjete stranici) ostaje
-uključen, cPanel cron samo jamči da se objava dogodi i kad nema posjeta.
-**Ne postavljati** `DISABLE_WP_CRON` u `wp-config.php` dok cPanel cron
-radi samo jednom dnevno: to zaustavlja zakazane zadatke svih pluginova,
-npr. UpdraftPlus sigurnosne kopije (isprobano 2026-11-16, vraćeno).
+**Ne postavljati** `DISABLE_WP_CRON` u `wp-config.php` ako serverski
+cron ne radi barem svakih nekoliko minuta: to zaustavlja zakazane
+zadatke svih pluginova, npr. UpdraftPlus sigurnosne kopije (isprobano
+na ufokus.hr 2026-11-16, vraćeno).
 
 ## Zašto stranica /objava-cjenika ne koristi temu
 
@@ -84,25 +125,21 @@ na ufokus.hr). Stranica "Objava cjenika" u WordPressu mora postojati i
 imati upravo tu adresu (slug). Sadržaj stranice se ne koristi.
 
 Stranica se namjerno ne sprema u cache (WP-Optimize i slični), inače
-bi nakon jutarnje objave posjetitelji satima vidjeli stari popis.
+bi posjetitelji i programi za prikupljanje cijena vidjeli stari popis.
+Pravilnik (čl. 5.) traži da automatizirani programi mogu slobodno
+dohvaćati cjenik, pa stranicu i mapu `cjenici` ne treba blokirati.
 
 Ako se CSV datoteka ručno obriše iz `uploads/cjenici/`, kod sljedeće
-objave nestaje i s popisa (nema neispravnih linkova).
-
-## Provjera rada
-
-Svako jutro nakon 6:00 na /objava-cjenika treba biti novi cjenik s
-današnjim datumom i vremenom oko 06:00. Ako ga nema, provjeriti
-redom: cron job u cPanelu, dijeljenje Google tablice, poruku nakon
-klika na "Objavi cjenik sada" u postavkama.
+provjere nestaje i s popisa (nema neispravnih linkova).
 
 ## Testovi (lokalno)
 
-`test-cjenik.php` (nije na serveru) provjerava nazive datoteka, verzije,
-čuvanje 30 dana i odbijanje privatne tablice:
+`test-cjenik.php` (nije na serveru) provjerava nazive datoteka,
+pretvorbu u točku-zarez, objavu samo kod promjene, broj pohrane,
+arhivu i odbijanje privatne tablice:
 
 ```
-wp eval-file test-cjenik.php <javni_csv_link> <link_koji_nije_csv>
+wp eval-file test-cjenik.php <javni_google_csv_link> <link_koji_nije_csv>
 ```
 
-Briše zapis objava, zato se pokreće samo na lokalnoj kopiji stranice.
+Briše zapise objava, zato se pokreće samo na lokalnoj kopiji stranice.

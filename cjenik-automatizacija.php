@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Cjenik Automatizacija (Sidrene cijene)
- * Description: Svaki dan u 6:00 povlači cjenik s Google Sheeta i objavljuje ga na /objava-cjenika (zakonski naziv datoteke, čuvanje 30 dana). Odgovorna osoba: Daniel Wurzberg, Udruga Fokus. Upute: README.md u mapi plugina.
- * Version: 1.6
+ * Plugin Name: Cjenik Automatizacija (bazne cijene)
+ * Description: Svaki sat provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026). Odgovorna osoba: Daniel Wurzberg, Udruga Fokus. Upute: README.md u mapi plugina.
+ * Version: 2.0
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -11,55 +11,64 @@ if (!defined('ABSPATH')) exit;
 
 define('CJENIK_OPTION_FEEDS', 'cjenik_auto_feeds');
 define('CJENIK_OPTION_LOG', 'cjenik_auto_log');
+define('CJENIK_OPTION_COUNTERS', 'cjenik_auto_counters');
 define('CJENIK_SUBDIR', 'cjenici');
-define('CJENIK_RETENTION_DAYS', 30);
+define('CJENIK_RETENTION_DAYS', 30); // pravilnik traži najmanje 15 dana od zamjene
+define('CJENIK_HOOK', 'cjenik_auto_daily_event');
 
-// ---------- Cron ----------
+// ---------- Cron: provjera svaki sat, objava samo kad se cjenik promijeni ----------
 
-register_activation_hook(__FILE__, function () {
-    if (!wp_next_scheduled('cjenik_auto_daily_event')) {
-        // 05:55 lokalno, da ga cPanel cron u 06:00 sigurno zatekne kao "due"
-        $first_run = (new DateTime('tomorrow 05:55', wp_timezone()))->getTimestamp();
-        wp_schedule_event($first_run, 'daily', 'cjenik_auto_daily_event');
+function cjenik_auto_ensure_schedule() {
+    if (wp_get_schedule(CJENIK_HOOK) !== 'hourly') {
+        wp_clear_scheduled_hook(CJENIK_HOOK);
+        wp_schedule_event(time(), 'hourly', CJENIK_HOOK);
     }
-});
+}
+register_activation_hook(__FILE__, 'cjenik_auto_ensure_schedule');
+add_action('init', 'cjenik_auto_ensure_schedule');
 
 register_deactivation_hook(__FILE__, function () {
-    wp_clear_scheduled_hook('cjenik_auto_daily_event');
+    wp_clear_scheduled_hook(CJENIK_HOOK);
 });
 
-add_action('cjenik_auto_daily_event', 'cjenik_auto_run');
+add_action(CJENIK_HOOK, 'cjenik_auto_run');
 
 // ---------- Čista logika ----------
 
 function cjenik_auto_sanitize($str) {
     $map = ['č' => 'c', 'ć' => 'c', 'đ' => 'd', 'š' => 's', 'ž' => 'z',
             'Č' => 'C', 'Ć' => 'C', 'Đ' => 'D', 'Š' => 'S', 'Ž' => 'Z'];
-    $str = strtr((string) $str, $map);
-    return strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $str));
+    $str = strtoupper(strtr(trim((string) $str), $map));
+    $str = preg_replace('/[\s\-\/]+/', '_', $str);
+    $str = preg_replace('/[^A-Z0-9_]/', '', $str);
+    return trim(preg_replace('/_+/', '_', $str), '_');
 }
 
-function cjenik_auto_build_filename($business_type, $address, $location_code, $version, $date, $time) {
-    return sprintf(
-        '%s_%s_%s_%04d_%s_%s.csv',
-        cjenik_auto_sanitize($business_type),
-        cjenik_auto_sanitize($address),
-        cjenik_auto_sanitize($location_code),
-        (int) $version,
-        $date,
-        $time
-    );
+// Dio naziva datoteke bez broja pohrane i vremena, npr. 12345678901_ZA_SVA_PRODAJNA_MJESTA_ROBA
+function cjenik_auto_key($oib, $mjesto, $vrsta) {
+    return implode('_', array_map('cjenik_auto_sanitize', [$oib, $mjesto, $vrsta]));
+}
+
+function cjenik_auto_build_filename($key, $broj, $date, $time) {
+    return sprintf('%s_%04d_%s_%s.csv', $key, (int) $broj, $date, $time);
 }
 
 function cjenik_auto_parse_feeds($raw) {
     $feeds = [];
-    foreach (explode("\n", (string) $raw) as $line) {
+    foreach (explode("\n", (string) $raw) as $n => $line) {
         $line = trim($line);
         if ($line === '' || $line[0] === '#') continue;
         $parts = array_map('trim', explode('|', $line));
-        if (count($parts) !== 5) continue;
-        [$label, $business_type, $address, $location_code, $csv_url] = $parts;
-        $feeds[] = compact('label', 'business_type', 'address', 'location_code', 'csv_url');
+        $feed = ['line' => $n + 1, 'error' => ''];
+        if (count($parts) !== 5) {
+            $feed['error'] = 'treba 5 dijelova odvojenih znakom |';
+        } else {
+            [$feed['label'], $feed['oib'], $feed['mjesto'], $vrsta, $feed['csv_url']] = $parts;
+            $feed['vrsta'] = strtoupper($vrsta);
+            if (!preg_match('/^\d{7,13}$/', $feed['oib'])) $feed['error'] = 'drugi dio mora biti OIB (ili matični broj), samo znamenke';
+            elseif (!in_array($feed['vrsta'], ['ROBA', 'USLUGA'], true)) $feed['error'] = 'četvrti dio mora biti ROBA ili USLUGA';
+        }
+        $feeds[] = $feed;
     }
     return $feeds;
 }
@@ -68,6 +77,22 @@ function cjenik_auto_parse_feeds($raw) {
 function cjenik_auto_is_csv($body) {
     $body = ltrim($body, "\xEF\xBB\xBF \t\r\n");
     return $body !== '' && $body[0] !== '<';
+}
+
+// Pravilnik: UTF-8, stupci odvojeni točkom-zarezom. Prijelomi reda unutar ćelija se uklanjaju.
+function cjenik_auto_to_semicolon_csv($body) {
+    $in = fopen('php://temp', 'r+');
+    fwrite($in, preg_replace('/^\xEF\xBB\xBF/', '', $body));
+    rewind($in);
+    $out = fopen('php://temp', 'r+');
+    while (($row = fgetcsv($in, 0, ',', '"', '')) !== false) {
+        $row = array_map(fn($c) => trim(preg_replace('/\s*[\r\n]+\s*/', ' ', (string) $c)), $row);
+        if (implode('', $row) === '') continue;
+        fputcsv($out, $row, ';', '"', '', "\n");
+    }
+    rewind($out);
+    // BOM da Excel ispravno prikaže č, ć, š, ž, đ
+    return "\xEF\xBB\xBF" . stream_get_contents($out);
 }
 
 // ---------- Glavni posao ----------
@@ -80,55 +105,67 @@ function cjenik_auto_upload_dir() {
     return [$dir, $url];
 }
 
+// Vraća [greške, broj novih objava]
 function cjenik_auto_run() {
     $feeds = cjenik_auto_parse_feeds(get_option(CJENIK_OPTION_FEEDS, ''));
-    $errors = [];
-    if (empty($feeds)) return ['Nema unesenih cjenika u postavkama.'];
+    if (empty($feeds)) return [['Nema unesenih cjenika u postavkama.'], 0];
 
     [$dir, $base_url] = cjenik_auto_upload_dir();
     $log = get_option(CJENIK_OPTION_LOG, []);
-    $today = current_time('Ymd');
-    $time = current_time('Hi');
+    $counters = get_option(CJENIK_OPTION_COUNTERS, []);
+    $now = current_time('timestamp');
+    $errors = [];
+    $published = 0;
 
-    foreach ($feeds as $i => $feed) {
+    foreach ($feeds as $feed) {
+        if ($feed['error']) {
+            $errors[] = sprintf('Redak %d u postavkama nije ispravan: %s. Ništa nije objavljeno.', $feed['line'], $feed['error']);
+            continue;
+        }
+
         $response = wp_remote_get($feed['csv_url'], ['timeout' => 30]);
         $code = is_wp_error($response) ? $response->get_error_message() : wp_remote_retrieve_response_code($response);
         $body = is_wp_error($response) ? '' : wp_remote_retrieve_body($response);
-
         if ($code !== 200 || !cjenik_auto_is_csv($body)) {
-            $errors[] = sprintf('%s: dohvat nije uspio (%s). Je li tablica dijeljena kao "Svatko s linkom"?', $feed['label'], $code);
-            continue; // stari cjenici ostaju objavljeni
+            $errors[] = sprintf('%s: dohvat nije uspio (%s). Je li tablica dijeljena kao "Anyone with the link"?', $feed['label'], $code);
+            continue; // dosadašnji cjenik ostaje važeći
         }
 
-        // BOM da Excel ispravno prikaže č, ć, š, ž, đ
-        if (strncmp($body, "\xEF\xBB\xBF", 3) !== 0) $body = "\xEF\xBB\xBF" . $body;
+        $body = cjenik_auto_to_semicolon_csv($body);
+        $hash = md5($body);
+        $key = cjenik_auto_key($feed['oib'], $feed['mjesto'], $feed['vrsta']);
 
-        // Verzija ide po lokaciji, ne po retku, da se dva taba iste lokacije ne prepišu
-        $prefix = implode('_', array_map('cjenik_auto_sanitize', [$feed['business_type'], $feed['address'], $feed['location_code']])) . '_';
-        $version = 1 + count(array_filter($log, function ($e) use ($prefix, $today) {
-            return $e['date'] === $today && strpos($e['file'], $prefix) === 0;
-        }));
+        $current = null;
+        foreach ($log as $i => $e) {
+            if (($e['key'] ?? '') === $key && empty($e['replaced'])) $current = $i;
+        }
+        if ($current !== null && $log[$current]['hash'] === $hash) continue; // nema promjene, nema nove objave
 
-        $filename = cjenik_auto_build_filename(
-            $feed['business_type'], $feed['address'], $feed['location_code'], $version, $today, $time
-        );
+        $broj = ($counters[$key] ?? 0) + 1;
+        $counters[$key] = $broj;
+        $filename = cjenik_auto_build_filename($key, $broj, current_time('Ymd'), current_time('Hi'));
         file_put_contents(trailingslashit($dir) . $filename, $body);
 
+        if ($current !== null) $log[$current]['replaced'] = $now;
         $log[] = [
-            'feed' => $i,
+            'key' => $key,
             'label' => $feed['label'],
             'file' => $filename,
             'url' => trailingslashit($base_url) . $filename,
-            'date' => $today,
-            'timestamp' => current_time('timestamp'),
+            'hash' => $hash,
+            'timestamp' => $now,
         ];
+        $published++;
     }
+    update_option(CJENIK_OPTION_COUNTERS, $counters);
 
-    $cutoff = current_time('timestamp') - (CJENIK_RETENTION_DAYS * DAY_IN_SECONDS);
+    // Važeći cjenik ostaje uvijek, zamijenjeni (i stari zapisi bez ključa) CJENIK_RETENTION_DAYS dana
+    $cutoff = $now - (CJENIK_RETENTION_DAYS * DAY_IN_SECONDS);
     $kept = [];
     foreach ($log as $entry) {
         $path = trailingslashit($dir) . $entry['file'];
-        if ($entry['timestamp'] < $cutoff) {
+        $since = isset($entry['key']) ? ($entry['replaced'] ?? null) : $entry['timestamp'];
+        if ($since !== null && $since < $cutoff) {
             if (file_exists($path)) unlink($path);
         } elseif (file_exists($path)) {
             $kept[] = $entry; // ručno obrisana datoteka nestaje i s popisa
@@ -138,20 +175,20 @@ function cjenik_auto_run() {
 
     file_put_contents(trailingslashit($dir) . 'index.html', sprintf(
         '<!doctype html><html lang="hr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-        . '<title>Objava cjenika – %1$s</title><style>body{font-family:system-ui,sans-serif;max-width:720px;margin:2rem auto;padding:0 16px;line-height:1.7;color:#222}a{color:#0a58ca}</style></head>'
-        . '<body><h1>Objava cjenika</h1><p>Cjenici objavljeni u zadnjih 30 dana.</p>%2$s<p><a href="%3$s">← %1$s</a></p></body></html>',
+        . '<title>Objava cjenika – %1$s</title><style>body{font-family:system-ui,sans-serif;max-width:720px;margin:2rem auto;padding:0 16px;line-height:1.7;color:#222}a{color:#0a58ca}small{color:#666}</style></head>'
+        . '<body><h1>Objava cjenika</h1><p>Važeći cjenici i arhiva zamijenjenih cjenika (CSV, UTF-8, stupci odvojeni znakom ;).</p>%2$s<p><a href="%3$s">← %1$s</a></p></body></html>',
         esc_html(get_bloginfo('name')),
         cjenik_auto_render_list(),
         esc_url(home_url('/'))
     ));
 
-    return $errors;
+    return [$errors, $published];
 }
 
 // Tema ne ispisuje sadržaj stranica, pa na "objava-cjenika" prikazujemo popis koji plugin sam generira (adresa ostaje ista)
 add_action('template_redirect', function () {
     if (!is_page('objava-cjenika')) return;
-    // WP-Optimize i slični cache pluginovi inače poslužuju jučerašnji popis
+    // WP-Optimize i slični cache pluginovi inače poslužuju stari popis
     if (!defined('DONOTCACHEPAGE')) define('DONOTCACHEPAGE', true);
     nocache_headers();
     $index = trailingslashit(wp_upload_dir()['basedir']) . CJENIK_SUBDIR . '/index.html';
@@ -164,7 +201,7 @@ add_action('template_redirect', function () {
     exit;
 });
 
-// ---------- Popis svih cjenika zadnjih 30 dana, po lokaciji ----------
+// ---------- Popis: važeći cjenik + arhiva, po cjeniku ----------
 
 add_shortcode('cjenik_link', 'cjenik_auto_render_list');
 
@@ -172,20 +209,29 @@ function cjenik_auto_render_list() {
     $log = get_option(CJENIK_OPTION_LOG, []);
     if (empty($log)) return '<p>Cjenik još nije objavljen.</p>';
 
-    $by_feed = [];
+    $groups = [];
     foreach ($log as $entry) {
-        $by_feed[$entry['feed']][] = $entry;
+        $groups[$entry['key'] ?? 'stari:' . ($entry['feed'] ?? 0)][] = $entry;
     }
+    uasort($groups, fn($a, $b) => max(array_column($b, 'timestamp')) <=> max(array_column($a, 'timestamp')));
 
     $out = '';
-    foreach ($by_feed as $entries) {
+    foreach ($groups as $entries) {
         usort($entries, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
         $out .= '<h3>' . esc_html($entries[0]['label']) . '</h3><ul class="cjenik-lista">';
         foreach ($entries as $entry) {
+            if (!isset($entry['key'])) {
+                $note = 'objavljen prije 17.11.2026.';
+            } elseif (empty($entry['replaced'])) {
+                $note = '<strong>važeći</strong>';
+            } else {
+                $note = 'zamijenjen ' . esc_html(date_i18n('d.m.Y. H:i', $entry['replaced']));
+            }
             $out .= sprintf(
-                '<li><a href="%s">Cjenik – %s</a></li>',
+                '<li><a href="%s">Cjenik – %s</a> <small>(%s)</small></li>',
                 esc_url($entry['url']),
-                esc_html(date_i18n('d.m.Y. H:i', $entry['timestamp']))
+                esc_html(date_i18n('d.m.Y. H:i', $entry['timestamp'])),
+                $note
             );
         }
         $out .= '</ul>';
@@ -207,24 +253,30 @@ function cjenik_auto_settings_page() {
     if (!current_user_can('manage_options')) return;
 
     if (isset($_POST['cjenik_auto_run_now']) && check_admin_referer('cjenik_auto_run_now_action')) {
-        $errors = cjenik_auto_run();
-        if ($errors) {
-            foreach ($errors as $e) echo '<div class="notice notice-error"><p>' . esc_html($e) . '</p></div>';
-        } else {
-            echo '<div class="notice notice-success"><p>Cjenik objavljen.</p></div>';
+        [$errors, $published] = cjenik_auto_run();
+        foreach ($errors as $e) echo '<div class="notice notice-error"><p>' . esc_html($e) . '</p></div>';
+        if (!$errors || $published) {
+            $msg = $published ? sprintf('Objavljeno novih cjenika: %d.', $published) : 'Cjenik se nije promijenio, nova objava nije potrebna.';
+            echo '<div class="notice notice-success"><p>' . esc_html($msg) . '</p></div>';
         }
     }
 
-    $next = wp_next_scheduled('cjenik_auto_daily_event');
+    foreach (cjenik_auto_parse_feeds(get_option(CJENIK_OPTION_FEEDS, '')) as $f) {
+        if ($f['error']) echo '<div class="notice notice-warning"><p>' . esc_html(sprintf('Redak %d nije ispravan: %s.', $f['line'], $f['error'])) . '</p></div>';
+    }
+
+    $next = wp_next_scheduled(CJENIK_HOOK);
     ?>
     <div class="wrap">
         <h1>Cjenik Automatizacija</h1>
         <form method="post" action="options.php">
             <?php settings_fields('cjenik_auto_group'); ?>
             <p>Jedan cjenik po retku:<br>
-                <code>Naziv lokacije|VRSTA_SUBJEKTA|ADRESA|SIFRA_LOKACIJE|CSV_LINK</code></p>
+                <code>Naslov na stranici|OIB|PRODAJNO MJESTO|ROBA ili USLUGA|CSV_LINK</code></p>
+            <p>PRODAJNO MJESTO je vrsta, adresa i oznaka prodajnog mjesta (npr. <code>Prodavaonica Kutnjački put 11 PM1</code>),
+                ili <code>ZA_SVA_PRODAJNA_MJESTA</code> ako je cjenik isti na svim mjestima.</p>
             <p>Primjer:<br>
-                <code>Kutnjački put 11|UDRUGA|Kutnjački put 11|001|https://docs.google.com/spreadsheets/d/ID/export?format=csv</code></p>
+                <code>Knjige i priručnici|12345678901|ZA_SVA_PRODAJNA_MJESTA|ROBA|https://docs.google.com/spreadsheets/d/ID/export?format=csv</code></p>
             <textarea name="<?php echo esc_attr(CJENIK_OPTION_FEEDS); ?>" rows="6" cols="110"><?php
                 echo esc_textarea(get_option(CJENIK_OPTION_FEEDS, ''));
             ?></textarea>
@@ -233,14 +285,14 @@ function cjenik_auto_settings_page() {
 
         <form method="post">
             <?php wp_nonce_field('cjenik_auto_run_now_action'); ?>
-            <?php submit_button('Objavi cjenik sada', 'secondary', 'cjenik_auto_run_now'); ?>
+            <?php submit_button('Provjeri i objavi sada', 'secondary', 'cjenik_auto_run_now'); ?>
         </form>
 
-        <p>Sljedeće automatsko objavljivanje:
-            <strong><?php echo $next ? esc_html(wp_date('d.m.Y. H:i', $next)) : 'nije zakazano (deaktiviraj i aktiviraj plugin)'; ?></strong></p>
+        <p>Tablica se provjerava svaki sat, a nova datoteka objavljuje se samo kad se cjenik promijeni.
+            Sljedeća provjera: <strong><?php echo $next ? esc_html(wp_date('d.m.Y. H:i', $next)) : 'nije zakazana'; ?></strong></p>
 
-        <h2>Objavljeni cjenici (zadnjih 30 dana)</h2>
-        <?php echo do_shortcode('[cjenik_link]'); ?>
+        <h2>Objavljeni cjenici</h2>
+        <?php echo cjenik_auto_render_list(); ?>
     </div>
     <?php
 }
