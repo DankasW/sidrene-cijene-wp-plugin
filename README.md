@@ -149,7 +149,9 @@ e-mail nije poslan", pa se zna da upozorenja ne stižu.
 ## Stupci u Google tablici (čl. 3. pravilnika)
 
 Plugin stupce prenosi kakvi jesu, pa redoslijed mora biti točan već u
-tablici. Prvi red su naslovi stupaca.
+tablici. Prvi red s barem dva popunjena stupca su naslovi stupaca.
+Naslov iznad tablice (npr. samo "CJENIK" u ćeliji A1) i prazni redovi
+se preskaču.
 
 **Roba:**
 `Naziv robe` | `Šifra robe` | `Marka robe` | `Neto količina` |
@@ -165,7 +167,22 @@ cijena od 2. svibnja 2025. za hranu, piće, kozmetiku, sredstva za
 čišćenje, toaletne potrepštine i proizvode za kućanstvo, a od 10. rujna
 2026. za ostalu robu i usluge (Pravilnik o isticanju bazne cijene
 proizvoda, NN 132/2026). Cijene je najbolje pisati kao broj (`10,00`),
-bez oznake valute, da ih programi lakše čitaju.
+bez oznake valute, da ih programi lakše čitaju. Google u CSV šalje
+ono što se vidi u ćeliji: ako je ćelija formatirana kao valuta, u
+cjeniku piše npr. `€10.00`. Za čist broj: Format → Number → Number, a
+za decimalni zarez File → Settings → Locale → Croatia.
+
+### Kada mijenjati tablicu
+
+Plugin objavi novi cjenik čim vidi promjenu u tablici, a pravilnik
+traži objavu na dan promjene cijene, najkasnije do 11 sati:
+
+- Cijene mijenjajte **na dan kad nova cijena vrijedi, prije 10 sati**,
+  da provjera (svaki sat) stigne objaviti do 11.
+- **Ne mijenjajte tablicu dan ranije** "da bude spremno": novi cjenik
+  bio bi objavljen odmah, dan prije nego što cijena vrijedi.
+- Svaka promjena u tablici je nova objava, i ispravak tipfelera, pa
+  izbjegavajte nepotrebne izmjene.
 
 ## Pokretanje
 
