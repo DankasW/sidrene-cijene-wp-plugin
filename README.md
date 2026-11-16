@@ -139,7 +139,10 @@ Postojeće adrese pri spremanju ne dobivaju ništa.
 Za slanje se koristi WordPressov e-mail (`wp_mail`), pa poruke stižu
 samo ako stranica uopće može slati e-mail (to je isti put kojim stižu
 npr. poruke za reset lozinke). Ako je instaliran plugin poput WP Mail
-SMTP, poruke idu preko pošiljatelja postavljenog u njemu.
+SMTP, poruke idu preko pošiljatelja postavljenog u njemu. Plugin nema
+vlastiti SMTP, jer je slanje e-maila posao cijele stranice. Ako slanje
+ne uspije, na stranici postavki pojavi se crveno upozorenje "Zadnji
+e-mail nije poslan", pa se zna da upozorenja ne stižu.
 
 ## Stupci u Google tablici (čl. 3. pravilnika)
 

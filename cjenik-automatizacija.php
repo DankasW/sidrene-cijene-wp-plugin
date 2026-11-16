@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Svaki sat provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.4
+ * Version: 2.5
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -217,13 +217,16 @@ function cjenik_auto_status_text() {
 function cjenik_auto_welcome_new_emails($old, $new) {
     $split = fn($s) => array_filter(array_map('trim', explode(',', (string) $s)));
     foreach (array_diff($split($new), $split($old)) as $to) {
-        wp_mail(
+        $ok = wp_mail(
             $to,
             sprintf('[%s] Upozorenja o objavi cjenika', wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES)),
             "Ova adresa dodana je za upozorenja plugina Sidrene cijene na " . home_url('/') . ".\n"
                 . "Javit ćemo vam se ako se cjenik ne može provjeriti ili objaviti (najviše jednom dnevno za istu grešku).\n\n"
                 . "Trenutno stanje:\n\n" . cjenik_auto_status_text()
         );
+        $status = get_option(CJENIK_OPTION_STATUS, []);
+        $status[$ok ? 'mail_ok' : 'mail_failed'] = current_time('timestamp');
+        update_option(CJENIK_OPTION_STATUS, $status);
     }
 }
 add_action('update_option_' . CJENIK_OPTION_EMAIL, fn($old, $new) => cjenik_auto_welcome_new_emails($old, $new), 10, 2);
@@ -242,7 +245,7 @@ function cjenik_auto_record_status($errors, $now) {
         $status['last_error_msg'] = implode(' ', $errors);
         $new = array_values(array_filter($errors, fn($e) => !isset($mailed[md5($e)])));
         if ($new) {
-            wp_mail(
+            $ok = wp_mail(
                 cjenik_auto_alert_email(),
                 sprintf('[%s] Cjenik nije objavljen', wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES)),
                 "Plugin Sidrene cijene nije mogao provjeriti ili objaviti cjenik:\n\n- " . implode("\n- ", $new)
@@ -250,6 +253,7 @@ function cjenik_auto_record_status($errors, $now) {
                     . admin_url('options-general.php?page=cjenik-auto')
                     . "\n\nOva poruka za istu grešku stiže najviše jednom dnevno."
             );
+            $status[$ok ? 'mail_ok' : 'mail_failed'] = $now;
             foreach ($new as $e) $mailed[md5($e)] = $today;
         }
     }
@@ -373,7 +377,11 @@ function cjenik_auto_settings_page() {
             <?php if (!empty($status['last_error']) && $status['last_error'] > ($status['last_ok'] ?? 0)): ?>
                 <br><span style="color:#b32d2e">Zadnja provjera nije uspjela (<?php echo esc_html(date_i18n('d.m.Y. H:i', $status['last_error'])); ?>): <?php echo esc_html($status['last_error_msg']); ?></span>
             <?php endif; ?>
-            <br><small>Upozorenja o greškama stižu na: <?php echo esc_html(cjenik_auto_alert_email()); ?>, najviše jednom dnevno za istu grešku.</small></p>
+            <br><small>Upozorenja o greškama stižu na: <?php echo esc_html(cjenik_auto_alert_email()); ?>, najviše jednom dnevno za istu grešku.</small>
+            <?php if (!empty($status['mail_failed']) && $status['mail_failed'] > ($status['mail_ok'] ?? 0)): ?>
+                <br><span style="color:#b32d2e"><strong>Zadnji e-mail nije poslan</strong> (<?php echo esc_html(date_i18n('d.m.Y. H:i', $status['mail_failed'])); ?>).
+                Stranica trenutno ne može slati e-mail, pa upozorenja ne stižu. Provjerite postavke slanja e-maila (npr. plugin WP Mail SMTP).</span>
+            <?php endif; ?></p>
 
         <h2>Objavljeni cjenici</h2>
         <?php echo cjenik_auto_render_list(); ?>

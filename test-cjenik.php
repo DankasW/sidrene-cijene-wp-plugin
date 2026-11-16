@@ -116,6 +116,16 @@ check(count($mails) === 2 && $mails[1]['to'] === 'ona@primjer.hr', 'dodana druga
 update_option(CJENIK_OPTION_EMAIL, 'ona@primjer.hr');
 check(count($mails) === 2, 'uklanjanje adrese: nema maila');
 delete_option(CJENIK_OPTION_EMAIL);
+check(!empty(get_option(CJENIK_OPTION_STATUS)['mail_ok']), 'uspješno slanje se bilježi');
+
+// stranica ne može slati e-mail: to se mora zabilježiti da bi se prikazalo upozorenje
+remove_all_filters('pre_wp_mail');
+add_filter('pre_wp_mail', '__return_false');
+update_option(CJENIK_OPTION_EMAIL, 'netko@primjer.hr');
+$status = get_option(CJENIK_OPTION_STATUS);
+check(!empty($status['mail_failed']) && $status['mail_failed'] >= $status['mail_ok'], 'neuspjelo slanje se bilježi');
+delete_option(CJENIK_OPTION_EMAIL);
+remove_all_filters('pre_wp_mail');
 
 $html = cjenik_auto_render_list();
 check(strpos($html, 'važeći') !== false && strpos($html, 'Knjige') !== false && strpos($html, 'Usluge') !== false, 'popis prikazuje sve cjenike i oznaku važeći');
