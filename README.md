@@ -54,7 +54,8 @@ bilo kakve izmjene.
 
 ## Što radi
 
-1. Svaki sat preuzme cjenik iz Google Sheeta (CSV izvoz).
+1. Jednom dnevno, u 6 sati, preuzme cjenik iz Google Sheeta (CSV izvoz).
+   Ako preuzimanje ne uspije, pokušava ponovno svaki sat do 11 sati.
 2. Ako se sadržaj promijenio od zadnje objave, objavi novu datoteku u
    `wp-content/uploads/cjenici/`. Ako nije, ne radi ništa.
 3. Datoteku pretvara u oblik iz pravilnika: UTF-8, stupci odvojeni
@@ -174,22 +175,28 @@ za decimalni zarez File → Settings → Locale → Croatia.
 
 ### Kada mijenjati tablicu
 
-Plugin objavi novi cjenik čim vidi promjenu u tablici, a pravilnik
-traži objavu na dan promjene cijene, najkasnije do 11 sati:
+Tablica uvijek sadrži **cijene od sutra ujutro**. Plugin jednom dnevno,
+u 6 sati, objavi stanje tablice ako se promijenilo od zadnje objave.
+Sve izmjene napravljene tijekom dana (npr. jedna osoba ujutro, druga u
+popodnevnoj smjeni) skupe se i objave zajedno sljedećeg jutra, prije
+roka od 11 sati koji traži pravilnik. Na webu do tada stoji dosadašnji
+cjenik.
 
-- Cijene mijenjajte **na dan kad nova cijena vrijedi, prije 10 sati**,
-  da provjera (svaki sat) stigne objaviti do 11.
-- **Ne mijenjajte tablicu dan ranije** "da bude spremno": novi cjenik
-  bio bi objavljen odmah, dan prije nego što cijena vrijedi.
-- Svaka promjena u tablici je nova objava, i ispravak tipfelera, pa
-  izbjegavajte nepotrebne izmjene.
+- Nove cijene upišite **dan prije** nego što vrijede, bilo kad tijekom
+  dana.
+- Ako cijena mora vrijediti **odmah, istog dana**, upišite je pa u
+  postavkama kliknite **"Provjeri i objavi sada"**: gumb objavljuje
+  odmah, bez čekanja jutra.
+- Ispravak tipfelera je također promjena, pa ulazi u sljedeću objavu.
+
+Vrijeme se mijenja u kodu (`CJENIK_FROM_HOUR`, `CJENIK_UNTIL_HOUR`).
 
 ## Pokretanje
 
 Plugin radi i **samo s ugrađenim WordPress cronom**: provjera se
-pokreće pri posjetima stranici, najviše jednom na sat. Izmijenjeni
-cjenik mora biti objavljen do 11 sati na dan izmjene, pa to stranicama
-s posjetima redovito stiže.
+pokreće pri posjetima stranici, svaki puni sat, a objavljuje između 6
+i 11 sati. Ako između 6 i 11 nitko ne posjeti stranicu, objava tog
+dana izostane i promjene čekaju sljedeće jutro.
 
 Za stranice s malo posjeta preporučujemo serverski cron (npr. cPanel →
 Cron Jobs) koji svaki sat poziva WordPress cron:

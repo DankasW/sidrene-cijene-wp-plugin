@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
- * Description: Svaki sat provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.7
+ * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
+ * Version: 2.8
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -17,13 +17,19 @@ define('CJENIK_OPTION_EMAIL', 'cjenik_auto_email');
 define('CJENIK_SUBDIR', 'cjenici');
 define('CJENIK_RETENTION_DAYS', 15); // pravilnik: arhivski cjenik dostupan 15 dana od zamjene
 define('CJENIK_HOOK', 'cjenik_auto_daily_event');
+define('CJENIK_OPTION_DONE', 'cjenik_auto_done');
+// Objava jednom dnevno: prva uspješna provjera od FROM sati; ako ne uspije, ponavlja se svaki sat do UNTIL (rok iz pravilnika: 11 sati)
+define('CJENIK_FROM_HOUR', 6);
+define('CJENIK_UNTIL_HOUR', 11);
 
-// ---------- Cron: provjera svaki sat, objava samo kad se cjenik promijeni ----------
+// ---------- Cron: svaki puni sat, a objava jednom dnevno i samo kad se cjenik promijeni ----------
 
 function cjenik_auto_ensure_schedule() {
-    if (wp_get_schedule(CJENIK_HOOK) !== 'hourly') {
+    $next = wp_next_scheduled(CJENIK_HOOK);
+    if (wp_get_schedule(CJENIK_HOOK) !== 'hourly' || $next % HOUR_IN_SECONDS !== 0) {
         wp_clear_scheduled_hook(CJENIK_HOOK);
-        wp_schedule_event(time(), 'hourly', CJENIK_HOOK);
+        // na puni sat, da ga serverski cron u 6:00 sigurno pokrene
+        wp_schedule_event((int) ceil(time() / HOUR_IN_SECONDS) * HOUR_IN_SECONDS, 'hourly', CJENIK_HOOK);
     }
 }
 register_activation_hook(__FILE__, 'cjenik_auto_ensure_schedule');
@@ -76,6 +82,12 @@ function cjenik_auto_parse_feeds($raw) {
 }
 
 // Google za privatne tablice zna vratiti HTML stranicu za prijavu umjesto CSV-a
+// Treba li automatska provjera ovog cjenika sada: unutar dnevnog prozora i danas još nije uspjela.
+// Promjene u tablici nakon današnje provjere čekaju sutrašnju objavu.
+function cjenik_auto_due($hour, $today, $done) {
+    return $hour >= CJENIK_FROM_HOUR && $hour < CJENIK_UNTIL_HOUR && $done !== $today;
+}
+
 function cjenik_auto_is_csv($body) {
     $body = ltrim($body, "\xEF\xBB\xBF \t\r\n");
     return $body !== '' && $body[0] !== '<';
@@ -111,8 +123,8 @@ function cjenik_auto_upload_dir() {
     return [$dir, $url];
 }
 
-// Vraća [greške, broj novih objava]
-function cjenik_auto_run() {
+// Vraća [greške, broj novih objava]. $manual = gumb "Provjeri i objavi sada": objavljuje odmah, bez dnevnog prozora.
+function cjenik_auto_run($manual = false) {
     $feeds = cjenik_auto_parse_feeds(get_option(CJENIK_OPTION_FEEDS, ''));
     if (empty($feeds)) return [['Nema unesenih cjenika u postavkama.'], 0];
 
@@ -122,8 +134,15 @@ function cjenik_auto_run() {
     $now = current_time('timestamp');
     $errors = [];
     $published = 0;
+    $done = get_option(CJENIK_OPTION_DONE, []);
+    $today = current_time('Ymd');
+    $hour = (int) current_time('G');
+    $checked = 0;
 
     foreach ($feeds as $feed) {
+        $key = $feed['error'] ? '' : cjenik_auto_key($feed['oib'], $feed['mjesto'], $feed['vrsta']);
+        if (!$manual && !cjenik_auto_due($hour, $today, $done[$key] ?? '')) continue;
+        $checked++;
         if ($feed['error']) {
             $errors[] = sprintf('Redak %d u postavkama nije ispravan: %s. Ništa nije objavljeno.', $feed['line'], $feed['error']);
             continue;
@@ -137,9 +156,9 @@ function cjenik_auto_run() {
             continue; // dosadašnji cjenik ostaje važeći
         }
 
+        $done[$key] = $today; // današnja provjera uspjela, kasnije promjene idu u sutrašnju objavu
         $body = cjenik_auto_to_semicolon_csv($body);
         $hash = md5($body);
-        $key = cjenik_auto_key($feed['oib'], $feed['mjesto'], $feed['vrsta']);
 
         $current = null;
         foreach ($log as $i => $e) {
@@ -163,6 +182,8 @@ function cjenik_auto_run() {
         ];
         $published++;
     }
+    if (!$checked) return [[], 0]; // izvan prozora ili je danas već provjereno
+    update_option(CJENIK_OPTION_DONE, $done);
     update_option(CJENIK_OPTION_COUNTERS, $counters);
 
     // Važeći cjenik ostaje uvijek, zamijenjeni (i stari zapisi bez ključa) CJENIK_RETENTION_DAYS dana
@@ -253,7 +274,7 @@ function cjenik_auto_record_status($errors, $now) {
                 cjenik_auto_alert_email(),
                 sprintf('[%s] Cjenik nije objavljen', wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES)),
                 "Plugin Sidrene cijene nije mogao provjeriti ili objaviti cjenik:\n\n- " . implode("\n- ", $new)
-                    . "\n\nDosadašnji cjenik ostaje objavljen. Provjera se ponavlja svaki sat.\nPostavke: "
+                    . "\n\nDosadašnji cjenik ostaje objavljen. Provjera se ponavlja svaki sat do " . CJENIK_UNTIL_HOUR . " sati.\nPostavke: "
                     . admin_url('options-general.php?page=cjenik-auto')
                     . "\n\nOva poruka za istu grešku stiže najviše jednom dnevno."
             );
@@ -334,7 +355,7 @@ function cjenik_auto_settings_page() {
     if (!current_user_can('manage_options')) return;
 
     if (isset($_POST['cjenik_auto_run_now']) && check_admin_referer('cjenik_auto_run_now_action')) {
-        [$errors, $published] = cjenik_auto_run();
+        [$errors, $published] = cjenik_auto_run(true);
         foreach ($errors as $e) echo '<div class="notice notice-error"><p>' . esc_html($e) . '</p></div>';
         if (!$errors || $published) {
             $msg = $published ? sprintf('Objavljeno novih cjenika: %d.', $published) : 'Cjenik se nije promijenio, nova objava nije potrebna.';
@@ -373,8 +394,9 @@ function cjenik_auto_settings_page() {
             <?php submit_button('Provjeri i objavi sada', 'secondary', 'cjenik_auto_run_now'); ?>
         </form>
 
-        <p>Tablica se provjerava svaki sat, a nova datoteka objavljuje se samo kad se cjenik promijeni.
-            Sljedeća provjera: <strong><?php echo $next ? esc_html(wp_date('d.m.Y. H:i', $next)) : 'nije zakazana'; ?></strong></p>
+        <p>Tablica se provjerava jednom dnevno u <?php echo (int) CJENIK_FROM_HOUR; ?> sati (ako ne uspije, ponovno svaki sat do <?php echo (int) CJENIK_UNTIL_HOUR; ?>),
+            a nova datoteka objavljuje se samo kad se cjenik promijeni. Izmjene u tablici napravljene tijekom dana objavljuju se sljedećeg jutra.
+            Gumb iznad objavljuje odmah. Sljedeće pokretanje: <strong><?php echo $next ? esc_html(wp_date('d.m.Y. H:i', $next)) : 'nije zakazana'; ?></strong></p>
         <?php $status = get_option(CJENIK_OPTION_STATUS, []); ?>
         <p>Zadnja provjera bez grešaka:
             <strong><?php echo !empty($status['last_ok']) ? esc_html(date_i18n('d.m.Y. H:i', $status['last_ok'])) : 'još nije bilo'; ?></strong>
