@@ -1,3 +1,5 @@
+<img src="assets/logo.svg" width="96" height="96" alt="Sidrene cijene logo">
+
 # Sidrene cijene: WordPress plugin za objavu cjenika
 
 WordPress plugin koji cjenik iz Google Sheeta objavljuje na vašoj
