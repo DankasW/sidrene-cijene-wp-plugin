@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Cjenik Automatizacija (bazne cijene)
  * Description: Svaki sat provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.0
+ * Version: 2.1
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -13,7 +13,7 @@ define('CJENIK_OPTION_FEEDS', 'cjenik_auto_feeds');
 define('CJENIK_OPTION_LOG', 'cjenik_auto_log');
 define('CJENIK_OPTION_COUNTERS', 'cjenik_auto_counters');
 define('CJENIK_SUBDIR', 'cjenici');
-define('CJENIK_RETENTION_DAYS', 30); // pravilnik traži najmanje 15 dana od zamjene
+define('CJENIK_RETENTION_DAYS', 15); // pravilnik: arhivski cjenik dostupan 15 dana od zamjene
 define('CJENIK_HOOK', 'cjenik_auto_daily_event');
 
 // ---------- Cron: provjera svaki sat, objava samo kad se cjenik promijeni ----------

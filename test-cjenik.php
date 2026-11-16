@@ -56,8 +56,13 @@ file_put_contents($src, "Naziv robe,Bazna cijena\nKnjiga,\"12,00\"\n");
 $log = get_option(CJENIK_OPTION_LOG);
 check($n === 1 && count($log) === 2 && !empty($log[0]['replaced']) && empty($log[1]['replaced']) && strpos($log[1]['file'], '_0002_') !== false, 'promjena: nova objava 0002, stara označena kao zamijenjena');
 
-// zamijenjen prije 31 dan nestaje, važeći ostaje i kad je star
-$log[0]['replaced'] -= 31 * DAY_IN_SECONDS;
+// zamijenjen prije 14 dana ostaje, prije 16 dana nestaje; važeći ostaje i kad je star
+$log[0]['replaced'] -= 14 * DAY_IN_SECONDS;
+update_option(CJENIK_OPTION_LOG, $log);
+cjenik_auto_run();
+check(file_exists($path0) && count(get_option(CJENIK_OPTION_LOG)) === 2, 'arhiva zamijenjena prije 14 dana još je dostupna');
+$log = get_option(CJENIK_OPTION_LOG);
+$log[0]['replaced'] -= 2 * DAY_IN_SECONDS;
 $log[1]['timestamp'] -= 60 * DAY_IN_SECONDS;
 update_option(CJENIK_OPTION_LOG, $log);
 cjenik_auto_run();

@@ -59,7 +59,8 @@ bilo kakve izmjene.
    `12345678901_ZA_SVA_PRODAJNA_MJESTA_ROBA_0001_20261117_0600.csv`.
    Broj pohrane raste sa svakom objavom tog cjenika.
 5. Važeći cjenik ostaje objavljen dok ga ne zamijeni novi. Zamijenjeni
-   cjenici ostaju dostupni 30 dana od zamjene (pravilnik traži najmanje 15).
+   cjenici ostaju dostupni 15 dana od zamjene, kako traži pravilnik
+   (čl. 3. st. 6.), a zatim ih plugin sam briše.
 6. Na adresi **/objava-cjenika/** (na ufokus.hr:
    https://www.ufokus.hr/objava-cjenika/) prikazuje važeće cjenike i
    arhivu.
