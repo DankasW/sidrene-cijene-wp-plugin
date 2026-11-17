@@ -83,9 +83,13 @@ objavljuje, a dotadašnji cjenik ostaje važeći.
 WP admin → **Settings → Sidrene cijene** (hrvatski WordPress: Postavke → Sidrene cijene). Jedan cjenik po retku:
 
 ```
-Naslov na stranici|OIB|PRODAJNO MJESTO|ROBA ili USLUGA|CSV_LINK
+Naziv|OIB|PRODAJNO MJESTO|ROBA ili USLUGA|CSV_LINK
 ```
 
+- **Naziv**: za vas, da znate koji je koji redak. Na stranici linkovi
+  glase "Cjenik roba – datum" i "Cjenik usluga – datum". Naziv se
+  dodaje u link samo ako imate više cjenika iste vrste (npr. više
+  prodajnih mjesta), da se razlikuju.
 - **OIB** za pravnu osobu, matični broj za fizičku osobu (samo znamenke).
 - **PRODAJNO MJESTO**: vrsta, adresa i oznaka prodajnog mjesta, npr.
   `Prodavaonica Kutnjački put 11 PM1`. Ako je cjenik isti na svim
@@ -289,6 +293,8 @@ cijele brojeve, a ne kao decimale. Za njega je 2.949 *veće* od 2.95
 točke uvijek dvije znamenke (2.91 do 2.99), a nakon 2.99 ide 3.0
 (pa 3.01, 3.02...), nikad 2.100 ili 2.991.
 
+- **2.96**: na stranici s cjenicima nema više naslova grupa, linkovi
+  glase "Cjenik roba – datum" i "Cjenik usluga – datum" (roba prva).
 - **2.95**: obavijest o novoj verziji i ažuriranje jednim klikom iz
   WordPressa (preko GitHub Releasea).
 - **2.94**: kraći tekst kvačice "Objavi link svaki dan".

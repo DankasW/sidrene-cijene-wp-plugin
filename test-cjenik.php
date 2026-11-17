@@ -148,7 +148,19 @@ delete_option(CJENIK_OPTION_EMAIL);
 remove_all_filters('pre_wp_mail');
 
 $html = cjenik_auto_render_list();
-check(strpos($html, 'važeći') !== false && strpos($html, 'Knjige') !== false && strpos($html, 'Usluge') !== false, 'popis prikazuje sve cjenike i oznaku važeći');
+check(strpos($html, 'važeći') !== false && strpos($html, 'Cjenik roba – ') !== false && strpos($html, 'Cjenik usluga – ') !== false
+    && strpos($html, 'Knjige') === false && strpos($html, '<h3') === false && strpos($html, 'Cjenik roba') < strpos($html, 'Cjenik usluga'),
+    'popis: "Cjenik roba/usluga – datum", bez naslova, roba prva');
+
+// dva prodajna mjesta s robom: tada se uz naziv dodaje naslov iz postavki
+$saved = get_option(CJENIK_OPTION_LOG);
+update_option(CJENIK_OPTION_LOG, [
+    ['key' => "{$oib}_MJESTO_A_ROBA", 'label' => 'Trgovina A', 'file' => 'a.csv', 'url' => 'http://x/a.csv', 'hash' => 'a', 'timestamp' => time()],
+    ['key' => "{$oib}_MJESTO_B_ROBA", 'label' => 'Trgovina B', 'file' => 'b.csv', 'url' => 'http://x/b.csv', 'hash' => 'b', 'timestamp' => time()],
+]);
+$html = cjenik_auto_render_list();
+check(strpos($html, 'Cjenik roba, Trgovina A – ') !== false && strpos($html, 'Cjenik roba, Trgovina B – ') !== false, 'više mjesta s robom: naziv mjesta u linku');
+update_option(CJENIK_OPTION_LOG, $saved);
 
 unlink($src);
 WP_CLI::success('Svi testovi prolaze');

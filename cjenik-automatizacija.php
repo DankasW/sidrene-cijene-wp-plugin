@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i objavljuje ga na /objava-cjenika (svaki dan ili samo kad se promijeni, po izboru) prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.95
+ * Version: 2.96
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -391,12 +391,18 @@ function cjenik_auto_render_list() {
     foreach ($log as $entry) {
         $groups[$entry['key'] ?? 'stari:' . ($entry['feed'] ?? 0)][] = $entry;
     }
-    uasort($groups, fn($a, $b) => max(array_column($b, 'timestamp')) <=> max(array_column($a, 'timestamp')));
+    ksort($groups); // isti OIB i mjesto: roba prije usluga
+
+    // "Cjenik roba" / "Cjenik usluga"; naslov iz postavki dodaje se samo ako ima više cjenika iste vrste (više prodajnih mjesta)
+    $vrsta = fn($key) => preg_match('/_(ROBA|USLUGA)$/', $key, $m) ? ($m[1] === 'ROBA' ? 'roba' : 'usluga') : '';
+    $per_vrsta = array_count_values(array_map($vrsta, array_keys($groups)));
 
     $out = '';
-    foreach ($groups as $entries) {
+    foreach ($groups as $key => $entries) {
         usort($entries, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
-        $out .= '<h3>' . esc_html($entries[0]['label']) . '</h3><ul class="cjenik-lista">';
+        $v = $vrsta($key);
+        $name = trim('Cjenik ' . $v) . (($v === '' || $per_vrsta[$v] > 1) ? ', ' . $entries[0]['label'] : '');
+        $out .= '<ul class="cjenik-lista">';
         foreach ($entries as $entry) {
             if (!isset($entry['key'])) {
                 $note = 'objavljen prije 17.11.2026.';
@@ -406,8 +412,9 @@ function cjenik_auto_render_list() {
                 $note = 'zamijenjen ' . esc_html(date_i18n('d.m.Y. H:i', $entry['replaced']));
             }
             $out .= sprintf(
-                '<li><a href="%s">Cjenik – %s</a> <small>(%s)</small></li>',
+                '<li><a href="%s">%s – %s</a> <small>(%s)</small></li>',
                 esc_url($entry['url']),
+                esc_html($name),
                 esc_html(date_i18n('d.m.Y. H:i', $entry['timestamp'])),
                 $note
             );
@@ -456,7 +463,8 @@ function cjenik_auto_settings_page() {
         <form method="post" action="options.php">
             <?php settings_fields('cjenik_auto_group'); ?>
             <p>Jedan cjenik po retku:<br>
-                <code>Naslov na stranici|OIB|PRODAJNO MJESTO|ROBA ili USLUGA|CSV_LINK</code></p>
+                <code>Naziv|OIB|PRODAJNO MJESTO|ROBA ili USLUGA|CSV_LINK</code><br>
+                <small>Naziv je za vas. Na stranici linkovi glase "Cjenik roba – datum" i "Cjenik usluga – datum".</small></p>
             <p>PRODAJNO MJESTO je vrsta, adresa i oznaka prodajnog mjesta (npr. <code>Prodavaonica Kutnjački put 11 PM1</code>),
                 ili <code>ZA_SVA_PRODAJNA_MJESTA</code> ako je cjenik isti na svim mjestima.</p>
             <p>Primjer:<br>
