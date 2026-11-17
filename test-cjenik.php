@@ -31,7 +31,8 @@ check($rows === [['Naziv', 'Cijena 10.9.2026.', 'Opis'], ['Knjiga "A"', '10,00',
 // --- objava preko lokalne izvorne datoteke koju test mijenja ---
 delete_option(CJENIK_OPTION_LOG);
 delete_option(CJENIK_OPTION_COUNTERS);
-$src = trailingslashit(wp_upload_dir()['basedir']) . 'cjenik-test-izvor.csv';
+update_option(CJENIK_OPTION_DAILY, '0'); // prvo način "samo kod promjene", dnevni se testira niže
+$src =trailingslashit(wp_upload_dir()['basedir']) . 'cjenik-test-izvor.csv';
 $src_url = trailingslashit(wp_upload_dir()['baseurl']) . 'cjenik-test-izvor.csv';
 file_put_contents($src, "Naziv robe,Bazna cijena\nKnjiga,\"10,00\"\n");
 
@@ -103,6 +104,22 @@ check(!in_array($files[0], array_column(get_option(CJENIK_OPTION_LOG), 'file'), 
 update_option(CJENIK_OPTION_FEEDS, "Knjige|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|$src_url\nUsluge|$oib|ZA_SVA_PRODAJNA_MJESTA|USLUGA|$src_url");
 [$errors, $n] = cjenik_auto_run(true);
 check($n === 1 && count(array_unique(array_column(get_option(CJENIK_OPTION_LOG), 'key'))) === 2, 'roba i usluge: zasebni cjenici');
+
+// dnevni način: isti cjenik objavljuje se ponovno svaki novi dan, ali ne dvaput isti dan
+update_option(CJENIK_OPTION_DAILY, '1');
+update_option(CJENIK_OPTION_FEEDS, "Knjige|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|$src_url");
+[$errors, $n] = cjenik_auto_run(true);
+check($n === 0, 'dnevni način: danas već objavljen, nema nove objave');
+$log = get_option(CJENIK_OPTION_LOG);
+foreach ($log as &$e) {
+    if (($e['key'] ?? '') === "{$oib}_ZA_SVA_PRODAJNA_MJESTA_ROBA" && empty($e['replaced'])) $e['timestamp'] -= DAY_IN_SECONDS;
+}
+unset($e);
+update_option(CJENIK_OPTION_LOG, $log);
+[$errors, $n] = cjenik_auto_run(true);
+$files = array_column(get_option(CJENIK_OPTION_LOG), 'file');
+check($errors === [] && $n === 1 && strpos(end($files), '_0004_') !== false, 'dnevni način: isti cjenik sljedeći dan objavljen kao 0004');
+update_option(CJENIK_OPTION_DAILY, '0');
 
 // stvarna Google tablica
 update_option(CJENIK_OPTION_FEEDS, "Google|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|$google_url");

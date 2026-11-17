@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
- * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i kad se promijeni objavljuje ga na /objava-cjenika prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.9
+ * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i objavljuje ga na /objava-cjenika (svaki dan ili samo kad se promijeni, po izboru) prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
+ * Version: 2.91
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -14,6 +14,7 @@ define('CJENIK_OPTION_LOG', 'cjenik_auto_log');
 define('CJENIK_OPTION_COUNTERS', 'cjenik_auto_counters');
 define('CJENIK_OPTION_STATUS', 'cjenik_auto_status');
 define('CJENIK_OPTION_EMAIL', 'cjenik_auto_email');
+define('CJENIK_OPTION_DAILY', 'cjenik_auto_daily'); // '1' = nova objava svaki dan i bez promjene (zadano)
 define('CJENIK_SUBDIR', 'cjenici');
 define('CJENIK_RETENTION_DAYS', 15); // pravilnik: arhivski cjenik dostupan 15 dana od zamjene
 define('CJENIK_HOOK', 'cjenik_auto_daily_event');
@@ -173,8 +174,13 @@ function cjenik_auto_run($manual = false) {
         foreach ($log as $i => $e) {
             if (($e['key'] ?? '') === $key && empty($e['replaced'])) $current = $i;
         }
-        if ($current !== null && $log[$current]['hash'] === $hash) continue; // nema promjene, nema nove objave
-        if ($missed) {
+        if ($current !== null && $log[$current]['hash'] === $hash) {
+            // timestampovi su current_time('timestamp'), pa gmdate daje lokalni datum
+            $published_today = gmdate('Ymd', $log[$current]['timestamp']) === gmdate('Ymd', $now);
+            $daily = get_option(CJENIK_OPTION_DAILY, '1') === '1';
+            if (!$daily || $published_today) continue; // nema promjene i nije potrebna dnevna objava
+            // dnevna objava istog sadržaja je sigurna i kad je jutarnja provjera propuštena
+        } elseif ($missed) {
             $errors[] = sprintf(
                 '%s: tablica ima neobjavljene promjene, a jutros između %d i %d sati provjera nije pokrenuta (stranicu nitko nije otvorio). '
                 . 'Ako nove cijene vrijede već danas, kliknite "Provjeri i objavi sada" u postavkama. Inače se objavljuju sutra ujutro. '
@@ -367,6 +373,7 @@ add_action('admin_menu', function () {
 add_action('admin_init', function () {
     register_setting('cjenik_auto_group', CJENIK_OPTION_FEEDS, ['sanitize_callback' => 'sanitize_textarea_field']);
     register_setting('cjenik_auto_group', CJENIK_OPTION_EMAIL, ['sanitize_callback' => 'cjenik_auto_sanitize_emails']);
+    register_setting('cjenik_auto_group', CJENIK_OPTION_DAILY, ['sanitize_callback' => fn($v) => $v ? '1' : '0']);
 });
 
 function cjenik_auto_settings_page() {
@@ -376,7 +383,10 @@ function cjenik_auto_settings_page() {
         [$errors, $published] = cjenik_auto_run(true);
         foreach ($errors as $e) echo '<div class="notice notice-error"><p>' . esc_html($e) . '</p></div>';
         if (!$errors || $published) {
-            $msg = $published ? sprintf('Objavljeno novih cjenika: %d.', $published) : 'Cjenik se nije promijenio, nova objava nije potrebna.';
+            $msg = $published ? sprintf('Objavljeno novih cjenika: %d.', $published)
+                : (get_option(CJENIK_OPTION_DAILY, '1') === '1'
+                    ? 'Ništa novo za objavu: cjenik se nije promijenio i danas je već objavljen.'
+                    : 'Ništa novo za objavu: cjenik se nije promijenio (dnevna objava je isključena).');
             echo '<div class="notice notice-success"><p>' . esc_html($msg) . '</p></div>';
         }
     }
@@ -400,6 +410,9 @@ function cjenik_auto_settings_page() {
             <textarea name="<?php echo esc_attr(CJENIK_OPTION_FEEDS); ?>" rows="6" cols="110"><?php
                 echo esc_textarea(get_option(CJENIK_OPTION_FEEDS, ''));
             ?></textarea>
+            <p><label><input type="checkbox" name="<?php echo esc_attr(CJENIK_OPTION_DAILY); ?>" value="1" <?php checked(get_option(CJENIK_OPTION_DAILY, '1'), '1'); ?>>
+                Objavi svaki dan, i kad se cjenik nije promijenio</label><br>
+                <small>Bez kvačice nova datoteka objavljuje se samo kad se cjenik promijeni (pravilnik traži objavu izmjene do 11 sati).</small></p>
             <p><label>E-mail za upozorenja (više adresa odvojite zarezom, prazno = administrator stranice):<br>
                 <input type="text" class="regular-text" name="<?php echo esc_attr(CJENIK_OPTION_EMAIL); ?>"
                     value="<?php echo esc_attr(get_option(CJENIK_OPTION_EMAIL, '')); ?>"
@@ -413,7 +426,8 @@ function cjenik_auto_settings_page() {
         </form>
 
         <p>Tablica se provjerava jednom dnevno u <?php echo (int) CJENIK_FROM_HOUR; ?> sati (ako ne uspije, ponovno svaki sat do <?php echo (int) CJENIK_UNTIL_HOUR; ?>),
-            a nova datoteka objavljuje se samo kad se cjenik promijeni. Izmjene u tablici napravljene tijekom dana objavljuju se sljedećeg jutra.
+            <?php echo get_option(CJENIK_OPTION_DAILY, '1') === '1' ? 'i cjenik se objavljuje svaki dan, i kad je isti kao jučer.' : 'a nova datoteka objavljuje se samo kad se cjenik promijeni.'; ?>
+            Izmjene u tablici napravljene tijekom dana objavljuju se sljedećeg jutra.
             Gumb iznad objavljuje odmah. Sljedeće pokretanje: <strong><?php echo $next ? esc_html(wp_date('d.m.Y. H:i', $next)) : 'nije zakazana'; ?></strong></p>
         <?php $status = get_option(CJENIK_OPTION_STATUS, []); ?>
         <p>Zadnja provjera bez grešaka:

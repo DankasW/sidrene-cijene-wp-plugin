@@ -57,8 +57,11 @@ bilo kakve izmjene.
 
 1. Jednom dnevno, u 6 sati, preuzme cjenik iz Google Sheeta (CSV izvoz).
    Ako preuzimanje ne uspije, pokušava ponovno svaki sat do 11 sati.
-2. Ako se sadržaj promijenio od zadnje objave, objavi novu datoteku u
-   `wp-content/uploads/cjenici/`. Ako nije, ne radi ništa.
+2. Objavi novu datoteku u `wp-content/uploads/cjenici/`. Po zadanom
+   **svaki dan**, i kad je cjenik isti kao jučer, pa se na stranici uvijek
+   vidi današnja objava. Ako u postavkama maknete kvačicu "Objavi svaki
+   dan", nova datoteka objavljuje se samo kad se cjenik promijeni (to je
+   minimum koji traži pravilnik).
 3. Datoteku pretvara u oblik iz pravilnika: UTF-8, stupci odvojeni
    točkom-zarezom, bez prijeloma reda unutar ćelija.
 4. Naziv datoteke (čl. 6. pravilnika):
@@ -122,7 +125,8 @@ nije uvijek slučaj. Uvijek ga prepišite iz adresne trake.)
 
 Neispravan redak plugin prijavi na stranici postavki i za njega ništa
 ne objavljuje. Gumb **"Provjeri i objavi sada"** odmah provjeri tablicu
-i objavi samo ako se cjenik promijenio.
+i objavi ako se cjenik promijenio, ili (uz dnevnu objavu) ako danas još
+nije objavljen. Isti, već objavljeni cjenik ne objavljuje dvaput isti dan.
 
 ### Upozorenja e-mailom
 
@@ -179,7 +183,8 @@ za decimalni zarez File → Settings → Locale → Croatia.
 ### Kada mijenjati tablicu
 
 Tablica uvijek sadrži **cijene od sutra ujutro**. Plugin jednom dnevno,
-u 6 sati, objavi stanje tablice ako se promijenilo od zadnje objave.
+u 6 sati, objavi stanje tablice (uz dnevnu objavu uvijek, inače samo ako
+se promijenilo od zadnje objave).
 Sve izmjene napravljene tijekom dana (npr. jedna osoba ujutro, druga u
 popodnevnoj smjeni) skupe se i objave zajedno sljedećeg jutra, prije
 roka od 11 sati koji traži pravilnik. Na webu do tada stoji dosadašnji
@@ -216,8 +221,9 @@ može svaki sat otvoriti adresu
 serveru. Dovoljno je i da netko između 6 i 11 sati otvori stranicu ili
 se prijavi u WordPress admin, jer i to pokreće provjeru.
 
-Ako jutarnja provjera izostane, a tablica se nije mijenjala, ništa se
-ne događa: stari cjenik i dalje vrijedi. Ako je tablica promijenjena,
+Ako jutarnja provjera izostane, a tablica se nije mijenjala, uz dnevnu
+objavu isti cjenik objavi se kod prvog posjeta nakon 11 sati, a bez nje
+ništa se ne događa (stari cjenik i dalje vrijedi). Ako je tablica promijenjena,
 plugin kod prvog posjeta nakon 11 sati ništa ne objavljuje, nego pošalje
 upozorenje e-mailom i prikaže ga u postavkama. Tada sami odlučite hoćete
 li kliknuti "Provjeri i objavi sada" ili pričekati sljedeće jutro.
@@ -247,7 +253,7 @@ provjere nestaje i s popisa (nema neispravnih linkova).
 
 `test-cjenik.php` (nije na serveru) provjerava nazive datoteka,
 pretvorbu u točku-zarez, preskakanje naslova iznad tablice, dnevni
-prozor objave (6 do 11 sati), objavu samo kod promjene, broj pohrane,
+prozor objave (6 do 11 sati), dnevnu objavu i objavu samo kod promjene, broj pohrane,
 arhivu i odbijanje privatne tablice:
 
 ```
@@ -261,6 +267,9 @@ Briše zapise objava, zato se pokreće samo na lokalnoj kopiji stranice.
 Manje izmjene dižu broj za mali korak (2.9, 2.91, 2.92...). Verzija 3.0
 dolazi tek uz veću promjenu u radu plugina.
 
+- **2.91**: kvačica "Objavi svaki dan" (uključena po zadanom): isti
+  cjenik objavljuje se svaki dan, a ne samo kod promjene. Jasnija poruka
+  kad gumb nema što objaviti.
 - **2.9**: upozorenje kad jutarnja provjera izostane, a tablica ima
   neobjavljene promjene. Bez promjena nema upozorenja.
 - **2.8**: objava jednom dnevno u 6 sati (ponovni pokušaji do 11).
