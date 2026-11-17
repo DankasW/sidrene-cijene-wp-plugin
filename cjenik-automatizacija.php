@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i objavljuje ga na /objava-cjenika (svaki dan ili samo kad se promijeni, po izboru) prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.92
+ * Version: 2.93
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -398,7 +398,8 @@ function cjenik_auto_settings_page() {
     $next = wp_next_scheduled(CJENIK_HOOK);
     ?>
     <div class="wrap">
-        <h1 style="display:flex;align-items:center;gap:10px"><img src="<?php echo esc_url(plugins_url('assets/logo.svg', __FILE__)); ?>" width="36" height="36" alt="">Sidrene cijene: objava cjenika</h1>
+        <h1 style="display:flex;align-items:center;gap:10px"><img src="<?php echo esc_url(plugins_url('assets/logo.svg', __FILE__)); ?>" width="36" height="36" alt="">Sidrene cijene: objava cjenika
+            <small style="font-size:13px;font-weight:normal;color:#646970">verzija <?php echo esc_html(get_file_data(__FILE__, ['v' => 'Version'])['v']); ?></small></h1>
         <form method="post" action="options.php">
             <?php settings_fields('cjenik_auto_group'); ?>
             <p>Jedan cjenik po retku:<br>
