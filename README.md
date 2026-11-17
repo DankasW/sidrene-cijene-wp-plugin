@@ -283,6 +283,12 @@ zaglavlju plugina.
 Manje izmjene dižu broj za mali korak (2.9, 2.91, 2.92...). Verzija 3.0
 dolazi tek uz veću promjenu u radu plugina.
 
+**Pazite na brojeve:** WordPress verzije uspoređuje dio po dio, kao
+cijele brojeve, a ne kao decimale. Za njega je 2.949 *veće* od 2.95
+(949 > 95), pa korisnici ne bi dobili ponudu za ažuriranje. Zato iza
+točke uvijek dvije znamenke (2.91 do 2.99), a nakon 2.99 ide 3.0
+(pa 3.01, 3.02...), nikad 2.100 ili 2.991.
+
 - **2.95**: obavijest o novoj verziji i ažuriranje jednim klikom iz
   WordPressa (preko GitHub Releasea).
 - **2.94**: kraći tekst kvačice "Objavi link svaki dan".
