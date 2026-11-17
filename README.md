@@ -105,27 +105,59 @@ Primjer:
 Knjige i priručnici|12345678901|ZA_SVA_PRODAJNA_MJESTA|ROBA|https://docs.google.com/spreadsheets/d/ID/export?format=csv
 ```
 
-### Roba i usluge: dva cjenika
+### Roba i usluge: jedna tablica s tabovima ili više tablica
+
+Osnovno pravilo: **jedan redak u postavkama = jedan tab Google tablice
+= jedan objavljeni cjenik.** Plugin uvijek čita samo jedan tab, onaj na
+koji pokazuje link u retku. Ostale tabove iste tablice ne vidi.
 
 Ako nudite i robu i usluge, pravilnik traži **dva odvojena cjenika**
-(dvije datoteke s različitim stupcima). U postavkama su to dva retka,
-jedan s `ROBA`, drugi s `USLUGA`. Podatke možete držati na dva načina:
+(dvije datoteke, svaka sa svojim stupcima). U postavkama su to dakle
+uvijek dva retka, jedan s `ROBA`, drugi s `USLUGA`, bez obzira na to
+držite li podatke u jednoj tablici ili u dvije. Isto vrijedi za više
+prodajnih mjesta s različitim cijenama: jedan redak po mjestu i vrsti.
 
-- **Dvije zasebne Google tablice**: svaki redak ima link svoje tablice.
-- **Jedna tablica s dva taba**: oba retka imaju isti link, ali svaki
-  s `&gid=<ID taba>` na kraju. ID taba vidi se u adresnoj traci kad
-  je tab otvoren (`...#gid=123456789`).
+**Način A: jedna Google tablica s više tabova** (npr. tab "Roba" i tab
+"Usluge"). Sve je na jednom mjestu i tablica se dijeli samo jednom.
 
-Link **bez** `gid` uvijek uzima **prvi** tab. Ako tablica ima više
-tabova, a `gid` izostavite, oba retka objavila bi isti (prvi) tab.
+1. Tablicu podijelite kao "Anyone with the link → Viewer".
+2. Otvorite tab s robom. U adresnoj traci na kraju piše `#gid=` i broj,
+   npr. `...edit#gid=0`. To je ID tog taba.
+3. Otvorite tab s uslugama i na isti način prepišite njegov ID, npr.
+   `#gid=2113975497`.
+4. Oba retka imaju **isti** ID tablice u linku, a razlikuju se samo po
+   `&gid=` na kraju:
 
 ```
-Knjige|12345678901|ZA_SVA_PRODAJNA_MJESTA|ROBA|https://docs.google.com/spreadsheets/d/ID/export?format=csv&gid=0
-Seminari|12345678901|ZA_SVA_PRODAJNA_MJESTA|USLUGA|https://docs.google.com/spreadsheets/d/ID/export?format=csv&gid=987654321
+Roba|12345678901|ZA_SVA_PRODAJNA_MJESTA|ROBA|https://docs.google.com/spreadsheets/d/ID_TABLICE/export?format=csv&gid=0
+Usluge|12345678901|ZA_SVA_PRODAJNA_MJESTA|USLUGA|https://docs.google.com/spreadsheets/d/ID_TABLICE/export?format=csv&gid=2113975497
 ```
 
-(`gid=0` u primjeru vrijedi samo ako prvi tab stvarno ima ID 0, što
-nije uvijek slučaj. Uvijek ga prepišite iz adresne trake.)
+**Način B: zasebna Google tablica za svaki cjenik.** Svaka tablica se
+dijeli posebno, a link nema `&gid=` (dovoljan je prvi tab):
+
+```
+Roba|12345678901|ZA_SVA_PRODAJNA_MJESTA|ROBA|https://docs.google.com/spreadsheets/d/ID_TABLICE_ROBE/export?format=csv
+Usluge|12345678901|ZA_SVA_PRODAJNA_MJESTA|USLUGA|https://docs.google.com/spreadsheets/d/ID_TABLICE_USLUGA/export?format=csv
+```
+
+ID tablice je dugi niz znakova u adresi između `/d/` i `/edit`.
+
+Na stranici s cjenicima oba načina izgledaju jednako: "Cjenik roba –
+datum" i "Cjenik usluga – datum".
+
+**Česte greške:**
+
+- **Link bez `&gid=` kad tablica ima više tabova** uvijek uzima
+  **prvi** tab. Oba retka bi tada objavila isti tab.
+- **`&gid=0` upisan naslijepo.** Prvi tab ima ID 0 samo ako je tablica
+  napravljena s njim. Kod kopiranih ili preuređenih tablica ID je drugi
+  broj, pa link vraća grešku. Uvijek prepišite broj iz adresne trake.
+- **Nova tablica, a u postavkama stari link.** Ako se podaci presele u
+  drugu tablicu, link u postavkama treba promijeniti. Plugin i dalje
+  objavljuje onu tablicu na koju pokazuje link.
+- **Novi tab dodan u tablicu.** Plugin ga neće objaviti dok za njega ne
+  dodate redak u postavkama.
 
 Neispravan redak plugin prijavi na stranici postavki i za njega ništa
 ne objavljuje. Gumb **"Provjeri i objavi sada"** odmah provjeri tablicu
