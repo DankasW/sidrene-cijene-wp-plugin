@@ -262,11 +262,29 @@ wp eval-file test-cjenik.php <javni_google_csv_link> <link_koji_nije_csv>
 
 Briše zapise objava, zato se pokreće samo na lokalnoj kopiji stranice.
 
+## Ažuriranja
+
+Od verzije 2.95 plugin sam provjerava (dvaput dnevno) postoji li na
+GitHubu novija verzija. Ako postoji, u WordPressu se na popisu
+pluginova pojavi uobičajena obavijest **"Dostupna je nova verzija"**,
+a ažurira se jednim klikom, kao svaki drugi plugin. Postavke i
+objavljeni cjenici ostaju.
+
+Za održavatelje: svaka verzija objavljuje se kao
+[Release](https://github.com/DankasW/sidrene-cijene-wp-plugin/releases)
+s oznakom `vX.YZ` i priloženom datotekom `cjenik-automatizacija.zip`, u
+kojoj je mapa **`cjenik-automatizacija`** (ne zip koji GitHub sam
+nudi, jer bi s drugim nazivom mape WordPress plugin instalirao kao novi
+i stari deaktivirao). Broj u oznaci mora odgovarati `Version:` u
+zaglavlju plugina.
+
 ## Verzije
 
 Manje izmjene dižu broj za mali korak (2.9, 2.91, 2.92...). Verzija 3.0
 dolazi tek uz veću promjenu u radu plugina.
 
+- **2.95**: obavijest o novoj verziji i ažuriranje jednim klikom iz
+  WordPressa (preko GitHub Releasea).
 - **2.94**: kraći tekst kvačice "Objavi link svaki dan".
 - **2.93**: broj verzije prikazan na stranici postavki.
 - **2.92**: s javne stranice maknut tehnički opis formata (CSV, UTF-8, ;).

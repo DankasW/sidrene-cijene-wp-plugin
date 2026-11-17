@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i objavljuje ga na /objava-cjenika (svaki dan ili samo kad se promijeni, po izboru) prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.94
+ * Version: 2.95
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -41,6 +41,59 @@ register_deactivation_hook(__FILE__, function () {
 });
 
 add_action(CJENIK_HOOK, 'cjenik_auto_run');
+
+// ---------- Ažuriranja s GitHub Releasea (ugrađeni WordPress sustav ažuriranja) ----------
+
+define('CJENIK_REPO', 'DankasW/sidrene-cijene-wp-plugin');
+
+// Zadnji Release s priloženim cjenik-automatizacija.zip (mapa u zipu mora se zvati cjenik-automatizacija)
+function cjenik_auto_latest_release() {
+    $cached = get_site_transient('cjenik_auto_release');
+    if ($cached !== false) return $cached;
+    $release = [];
+    $r = wp_remote_get('https://api.github.com/repos/' . CJENIK_REPO . '/releases/latest', ['timeout' => 10]);
+    if (!is_wp_error($r) && wp_remote_retrieve_response_code($r) === 200) {
+        $j = json_decode(wp_remote_retrieve_body($r), true);
+        foreach ($j['assets'] ?? [] as $a) {
+            if ($a['name'] === 'cjenik-automatizacija.zip') {
+                $release = ['version' => ltrim($j['tag_name'], 'v'), 'zip' => $a['browser_download_url'], 'url' => $j['html_url'], 'notes' => (string) ($j['body'] ?? '')];
+            }
+        }
+    }
+    set_site_transient('cjenik_auto_release', $release, 12 * HOUR_IN_SECONDS); // i neuspjeh, da GitHub ne pitamo stalno
+    return $release;
+}
+
+add_filter('pre_set_site_transient_update_plugins', function ($transient) {
+    if (!is_object($transient)) return $transient;
+    $file = plugin_basename(__FILE__);
+    $current = get_file_data(__FILE__, ['v' => 'Version'])['v'];
+    $release = cjenik_auto_latest_release();
+    if ($release && version_compare($release['version'], $current, '>')) {
+        $transient->response[$file] = (object) [
+            'slug' => 'cjenik-automatizacija', 'plugin' => $file, 'new_version' => $release['version'],
+            'package' => $release['zip'], 'url' => $release['url'],
+        ];
+    }
+    return $transient;
+});
+
+// Prozor "Pogledaj detalje verzije" na popisu pluginova
+add_filter('plugins_api', function ($result, $action, $args) {
+    if ($action !== 'plugin_information' || ($args->slug ?? '') !== 'cjenik-automatizacija') return $result;
+    $release = cjenik_auto_latest_release();
+    if (!$release) return $result;
+    return (object) [
+        'name' => 'Sidrene cijene (objava cjenika)', 'slug' => 'cjenik-automatizacija', 'version' => $release['version'],
+        'author' => 'Daniel Wurzberg (Udruga Fokus)', 'homepage' => 'https://github.com/' . CJENIK_REPO,
+        'download_link' => $release['zip'],
+        'sections' => ['changelog' => nl2br(esc_html($release['notes'] ?: 'Detalji: ' . $release['url']))],
+    ];
+}, 10, 3);
+
+add_action('upgrader_process_complete', function () {
+    delete_site_transient('cjenik_auto_release');
+});
 
 // ---------- Čista logika ----------
 
