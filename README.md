@@ -59,7 +59,7 @@ bilo kakve izmjene.
    Ako preuzimanje ne uspije, pokušava ponovno svaki sat do 11 sati.
 2. Objavi novu datoteku u `wp-content/uploads/cjenici/`. Po zadanom
    **svaki dan**, i kad je cjenik isti kao jučer, pa se na stranici uvijek
-   vidi današnja objava. Ako u postavkama maknete kvačicu "Objavi svaki
+   vidi današnja objava. Ako u postavkama maknete kvačicu "Objavi link svaki
    dan", nova datoteka objavljuje se samo kad se cjenik promijeni (to je
    minimum koji traži pravilnik).
 3. Datoteku pretvara u oblik iz pravilnika: UTF-8, stupci odvojeni
@@ -267,9 +267,10 @@ Briše zapise objava, zato se pokreće samo na lokalnoj kopiji stranice.
 Manje izmjene dižu broj za mali korak (2.9, 2.91, 2.92...). Verzija 3.0
 dolazi tek uz veću promjenu u radu plugina.
 
+- **2.94**: kraći tekst kvačice "Objavi link svaki dan".
 - **2.93**: broj verzije prikazan na stranici postavki.
 - **2.92**: s javne stranice maknut tehnički opis formata (CSV, UTF-8, ;).
-- **2.91**: kvačica "Objavi svaki dan" (uključena po zadanom): isti
+- **2.91**: kvačica "Objavi link svaki dan" (uključena po zadanom): isti
   cjenik objavljuje se svaki dan, a ne samo kod promjene. Jasnija poruka
   kad gumb nema što objaviti.
 - **2.9**: upozorenje kad jutarnja provjera izostane, a tablica ima

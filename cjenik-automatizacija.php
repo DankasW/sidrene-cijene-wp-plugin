@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i objavljuje ga na /objava-cjenika (svaki dan ili samo kad se promijeni, po izboru) prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.93
+ * Version: 2.94
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -412,8 +412,8 @@ function cjenik_auto_settings_page() {
                 echo esc_textarea(get_option(CJENIK_OPTION_FEEDS, ''));
             ?></textarea>
             <p><label><input type="checkbox" name="<?php echo esc_attr(CJENIK_OPTION_DAILY); ?>" value="1" <?php checked(get_option(CJENIK_OPTION_DAILY, '1'), '1'); ?>>
-                Objavi svaki dan, i kad se cjenik nije promijenio</label><br>
-                <small>Bez kvačice nova datoteka objavljuje se samo kad se cjenik promijeni (pravilnik traži objavu izmjene do 11 sati).</small></p>
+                Objavi link svaki dan</label><br>
+                <small>(Ugašeno objavljuje samo one dane kada ažurirate cjenik)</small></p>
             <p><label>E-mail za upozorenja (više adresa odvojite zarezom, prazno = administrator stranice):<br>
                 <input type="text" class="regular-text" name="<?php echo esc_attr(CJENIK_OPTION_EMAIL); ?>"
                     value="<?php echo esc_attr(get_option(CJENIK_OPTION_EMAIL, '')); ?>"
