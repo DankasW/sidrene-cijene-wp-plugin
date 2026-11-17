@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i objavljuje ga na /objava-cjenika (svaki dan ili samo kad se promijeni, po izboru) prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.91
+ * Version: 2.92
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  */
@@ -227,7 +227,7 @@ function cjenik_auto_run($manual = false) {
     file_put_contents(trailingslashit($dir) . 'index.html', sprintf(
         '<!doctype html><html lang="hr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
         . '<title>Objava cjenika – %1$s</title><style>body{font-family:system-ui,sans-serif;max-width:720px;margin:2rem auto;padding:0 16px;line-height:1.7;color:#222}a{color:#0a58ca}small{color:#666}</style></head>'
-        . '<body><h1>Objava cjenika</h1><p>Važeći cjenici i arhiva zamijenjenih cjenika (CSV, UTF-8, stupci odvojeni znakom ;).</p>%2$s<p><a href="%3$s">← %1$s</a></p></body></html>',
+        . '<body><h1>Objava cjenika</h1>%2$s<p><a href="%3$s">← %1$s</a></p></body></html>',
         esc_html(get_bloginfo('name')),
         cjenik_auto_render_list(),
         esc_url(home_url('/'))

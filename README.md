@@ -267,6 +267,7 @@ Briše zapise objava, zato se pokreće samo na lokalnoj kopiji stranice.
 Manje izmjene dižu broj za mali korak (2.9, 2.91, 2.92...). Verzija 3.0
 dolazi tek uz veću promjenu u radu plugina.
 
+- **2.92**: s javne stranice maknut tehnički opis formata (CSV, UTF-8, ;).
 - **2.91**: kvačica "Objavi svaki dan" (uključena po zadanom): isti
   cjenik objavljuje se svaki dan, a ne samo kod promjene. Jasnija poruka
   kad gumb nema što objaviti.
