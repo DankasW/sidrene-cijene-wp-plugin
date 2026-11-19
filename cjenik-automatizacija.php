@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i objavljuje ga na /objava-cjenika (svaki dan ili samo kad se promijeni, po izboru) prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.97
+ * Version: 2.98
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  * Requires at least: 5.3
@@ -67,7 +67,8 @@ function cjenik_auto_latest_release() {
 }
 
 add_filter('pre_set_site_transient_update_plugins', function ($transient) {
-    if (!is_object($transient)) return $transient;
+    // nakon brisanja plugina WordPress u istom zahtjevu osvježi popis ažuriranja; tada više ništa ne dohvaćamo
+    if (!is_object($transient) || !file_exists(__FILE__)) return $transient;
     $file = plugin_basename(__FILE__);
     $current = get_file_data(__FILE__, ['v' => 'Version'])['v'];
     $release = cjenik_auto_latest_release();
@@ -186,7 +187,9 @@ function cjenik_auto_upload_dir() {
 
 // Vraća [greške, broj novih objava]. $manual = gumb "Provjeri i objavi sada": objavljuje odmah, bez dnevnog prozora.
 function cjenik_auto_run($manual = false) {
-    // Brava: gumb i automatska objava u isto vrijeme dali bi isti broj pohrane. add_option je atomaran.
+    // Brava: gumb i automatska objava u isto vrijeme dali bi isti broj pohrane.
+    // shortcut: add_option nije atomaran (provjera pa INSERT ... ON DUPLICATE KEY), dva starta u istoj milisekundi oba prođu;
+    // dovoljno za satnu provjeru i povremeni klik, za pravu bravu INSERT IGNORE i provjera broja upisanih redaka
     if (!add_option('cjenik_auto_lock', time(), '', false)) {
         if (time() - (int) get_option('cjenik_auto_lock') < 5 * MINUTE_IN_SECONDS) {
             return [['Objava je upravo u tijeku, pokušajte ponovno za minutu.'], 0];
@@ -238,6 +241,12 @@ function cjenik_auto_run_locked($manual) {
 
         $done[$key] = $today; // današnja provjera uspjela, kasnije promjene idu u sutrašnju objavu
         $body = cjenik_auto_to_semicolon_csv($body);
+        if (substr_count($body, "\n") < 2) {
+            // samo naslovi stupaca (npr. slučajno obrisani reci): prazan cjenik ne smije zamijeniti važeći
+            $errors[] = sprintf('%s: tablica nema nijednog retka s podacima. Dosadašnji cjenik ostaje važeći.', $feed['label']);
+            unset($done[$key]); // ponovna provjera za sat vremena, kad se tablica ispravi
+            continue;
+        }
         $hash = md5($body);
 
         $current = null;
@@ -262,9 +271,11 @@ function cjenik_auto_run_locked($manual) {
 
         $broj = ($counters[$key] ?? 0) + 1;
         $filename = cjenik_auto_build_filename($key, $broj, current_time('Ymd'), current_time('Hi'));
-        if (@file_put_contents(trailingslashit($dir) . $filename, $body) === false) {
-            // dosadašnji cjenik ostaje važeći, inače bi bio označen kao zamijenjen bez novoga
-            $errors[] = sprintf('%s: datoteku %s nije moguće spremiti u %s (prava pristupa ili pun disk).', $feed['label'], $filename, $dir);
+        $path = trailingslashit($dir) . $filename;
+        if (@file_put_contents($path, $body) !== strlen($body)) {
+            // ni djelomično zapisana datoteka (pun disk) ne smije postati važeća
+            if (file_exists($path) && !is_dir($path)) @unlink($path);
+            $errors[] =sprintf('%s: datoteku %s nije moguće spremiti u %s (prava pristupa ili pun disk).', $feed['label'], $filename, $dir);
             unset($done[$key]); // pokušaj ponovno za sat vremena
             continue;
         }
@@ -284,6 +295,16 @@ function cjenik_auto_run_locked($manual) {
     if (!$checked) return [[], 0]; // izvan prozora ili je danas već provjereno
     update_option(CJENIK_OPTION_DONE, $done);
     update_option(CJENIK_OPTION_COUNTERS, $counters);
+
+    // Cjenik čiji je redak maknut iz postavki ne smije ostati "važeći": arhivira se i nakon roka briše.
+    // Samo kad su svi reci ispravni, da tipfeler u retku ne arhivira važeći cjenik.
+    if (!array_filter($feeds, fn($f) => $f['error'] !== '')) {
+        $active = array_map(fn($f) => cjenik_auto_key($f['oib'], $f['mjesto'], $f['vrsta']), $feeds);
+        foreach ($log as &$entry) {
+            if (empty($entry['replaced']) && !in_array($entry['key'], $active, true)) $entry['replaced'] = $now;
+        }
+        unset($entry);
+    }
 
     // Važeći cjenik ostaje uvijek, zamijenjeni CJENIK_RETENTION_DAYS dana od zamjene
     $cutoff = $now - (CJENIK_RETENTION_DAYS * DAY_IN_SECONDS);

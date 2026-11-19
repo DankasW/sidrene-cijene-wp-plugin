@@ -92,6 +92,17 @@ add_option('cjenik_auto_lock', time(), '', false);
 check($n === 0 && strpos($errors[0] ?? '', 'u tijeku') !== false, 'brava: istovremena druga objava se odbija');
 delete_option('cjenik_auto_lock');
 
+// zaostala brava (proces pao prije 10 minuta) ne smije zauvijek blokirati objavu
+add_option('cjenik_auto_lock', time() - 600, '', false);
+file_put_contents($src, "Naziv robe,Bazna cijena\n");
+[$errors, $n] = cjenik_auto_run(true);
+check(strpos(implode(' ', $errors), 'u tijeku') === false && get_option('cjenik_auto_lock') === false, 'zaostala brava: objava ipak kreće, brava se briše');
+
+// tablica sa samo naslovima (obrisani reci): greška, važeći cjenik ostaje
+$log = get_option(CJENIK_OPTION_LOG);
+check($n === 0 && strpos($errors[0] ?? '', 'nema nijednog retka') !== false && count($log) === 1 && empty($log[0]['replaced']), 'prazna tablica: ne objavljuje se, stari ostaje važeći');
+file_put_contents($src, "Naziv robe,Bazna cijena\nKnjiga,\"12,00\"\n");
+
 [$errors, $n] = cjenik_auto_run(true);
 $log = get_option(CJENIK_OPTION_LOG);
 check($n === 1 && count($log) === 2 && !empty($log[0]['replaced']) && empty($log[1]['replaced']) && strpos($log[1]['file'], '_0002_') !== false, 'promjena: nova objava 0002, stara označena kao zamijenjena');
@@ -124,6 +135,18 @@ check(!in_array($files[0], array_column(get_option(CJENIK_OPTION_LOG), 'file'), 
 update_option(CJENIK_OPTION_FEEDS, "Knjige|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|$src_url\nUsluge|$oib|ZA_SVA_PRODAJNA_MJESTA|USLUGA|$src_url");
 [$errors, $n] = cjenik_auto_run(true);
 check($n === 1 && count(array_unique(array_column(get_option(CJENIK_OPTION_LOG), 'key'))) === 2, 'roba i usluge: zasebni cjenici');
+
+// redak maknut iz postavki: njegov cjenik prestaje biti važeći (ali ne dok je neki redak neispravan)
+$usluge_vazeci = fn() => count(array_filter(get_option(CJENIK_OPTION_LOG), fn($e) => str_ends_with($e['key'], '_USLUGA') && empty($e['replaced'])));
+update_option(CJENIK_OPTION_FEEDS, "Knjige|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|$src_url\nTipfeler|$oib|ZA_SVA|ROBE|$src_url");
+cjenik_auto_run(true);
+check($usluge_vazeci() === 1, 'neispravan redak u postavkama: ništa se ne arhivira');
+update_option(CJENIK_OPTION_FEEDS, "Knjige|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|$src_url");
+cjenik_auto_run(true);
+check($usluge_vazeci() === 0 && strpos(cjenik_auto_render_list(), 'Cjenik usluga') !== false, 'maknut redak: cjenik usluga više nije važeći, ostaje u arhivi');
+update_option(CJENIK_OPTION_FEEDS, "Knjige|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|$src_url\nUsluge|$oib|ZA_SVA_PRODAJNA_MJESTA|USLUGA|$src_url");
+cjenik_auto_run(true);
+check($usluge_vazeci() === 1, 'vraćen redak: usluge ponovno imaju važeći cjenik');
 
 // dnevni način: isti cjenik objavljuje se ponovno svaki novi dan, ali ne dvaput isti dan
 update_option(CJENIK_OPTION_DAILY, '1');
@@ -175,6 +198,18 @@ check(strpos($html, 'važeći') !== false && strpos($html, 'Cjenik roba – ') !
 check(do_shortcode('[cjenik_link]') === $html, 'shortcode [cjenik_link] ispisuje isti popis');
 check(get_file_data(WP_PLUGIN_DIR . '/cjenik-automatizacija/cjenik-automatizacija.php', ['p' => 'Requires PHP'])['p'] === '8.1', 'zaglavlje traži PHP 8.1');
 check(get_option('cjenik_auto_lock') === false, 'brava je otpuštena nakon objave');
+
+// ažuriranje: WordPress nudi samo noviju verziju s GitHuba (2.949 bi za WP bila "novija" od 2.95)
+$file = 'cjenik-automatizacija/cjenik-automatizacija.php';
+$offer = function ($version) use ($file) {
+    set_site_transient('cjenik_auto_release', ['version' => $version, 'zip' => 'https://example.com/x.zip', 'url' => 'https://example.com', 'notes' => '']);
+    $t = apply_filters('pre_set_site_transient_update_plugins', (object) ['response' => []]);
+    return $t->response[$file]->new_version ?? null;
+};
+check($offer('99.01') === '99.01', 'ažuriranje: viša verzija se nudi');
+check($offer('0.01') === null, 'ažuriranje: niža verzija se ne nudi');
+check($offer(get_file_data(WP_PLUGIN_DIR . "/$file", ['v' => 'Version'])['v']) === null, 'ažuriranje: ista verzija se ne nudi');
+delete_site_transient('cjenik_auto_release');
 
 // dva prodajna mjesta s robom: tada se uz naziv dodaje naslov iz postavki
 $saved = get_option(CJENIK_OPTION_LOG);

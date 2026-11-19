@@ -5,8 +5,8 @@
 WordPress plugin koji cjenik iz Google Sheeta objavljuje na vašoj
 stranici prema **Pravilniku o načinu objave cjenika proizvoda**
 (NN 132/2026, na snazi od 17. studenoga 2026.): CSV datoteka s
-propisanim nazivom, stupci odvojeni znakom `;`, nova objava kad se
-cjenik promijeni i arhiva zamijenjenih cjenika. Napravljen za Udrugu
+propisanim nazivom, stupci odvojeni znakom `;`, objava svako jutro (ili
+samo kad se cjenik promijeni) i arhiva zamijenjenih cjenika. Napravljen za Udrugu
 Fokus (ufokus.hr), slobodan za korištenje pod licencom GPL-2.0-or-later.
 
 ## Pravni okvir
@@ -59,28 +59,48 @@ bilo kakve izmjene.
 
 ## Što radi
 
-1. Jednom dnevno, u 6 sati, preuzme cjenik iz Google Sheeta (CSV izvoz).
-   Ako preuzimanje ne uspije, pokušava ponovno svaki sat do 11 sati.
-2. Objavi novu datoteku u `wp-content/uploads/cjenici/`. Po zadanom
-   **svaki dan**, i kad je cjenik isti kao jučer, pa se na stranici uvijek
-   vidi današnja objava. Ako u postavkama maknete kvačicu "Objavi link svaki
-   dan", nova datoteka objavljuje se samo kad se cjenik promijeni (to je
-   minimum koji traži pravilnik).
+1. **Svako jutro u 6 sati** preuzme svaki cjenik iz Google Sheeta (CSV
+   izvoz). Ako to ne uspije, pokušava ponovno svaki sat do 11 sati (rok iz
+   pravilnika za objavu izmjene).
+2. **Objavi novu datoteku** u `wp-content/uploads/cjenici/`. Po zadanom
+   svaki dan, i kad je cjenik isti kao jučer, pa se na stranici uvijek
+   vidi današnja objava. Bez kvačice "Objavi link svaki dan" nova datoteka
+   nastaje samo kad se cjenik promijeni (minimum koji traži pravilnik).
 3. Datoteku pretvara u oblik iz pravilnika: UTF-8, stupci odvojeni
    točkom-zarezom, bez prijeloma reda unutar ćelija.
 4. Naziv datoteke (čl. 6. pravilnika):
    `OIB_PRODAJNOMJESTO_ROBA_BROJPOHRANE_GGGGMMDD_SSMM.csv`, npr.
    `12345678901_ZA_SVA_PRODAJNA_MJESTA_ROBA_0001_20261117_0600.csv`.
    Broj pohrane raste sa svakom objavom tog cjenika.
-5. Važeći cjenik ostaje objavljen dok ga ne zamijeni novi. Zamijenjeni
-   cjenici ostaju dostupni 15 dana od zamjene, kako traži pravilnik
-   (čl. 3. st. 6.), a zatim ih plugin sam briše.
+5. **Arhiva:** važeći cjenik ostaje objavljen dok ga ne zamijeni novi.
+   Zamijenjeni cjenici ostaju dostupni 15 dana od zamjene (čl. 3. st. 6.),
+   a zatim ih plugin sam briše. Isto vrijedi za cjenik čiji redak maknete
+   iz postavki: prestaje biti važeći i nakon 15 dana nestaje.
 6. Na adresi **/objava-cjenika/** (na ufokus.hr:
    https://www.ufokus.hr/objava-cjenika/) prikazuje važeće cjenike i
    arhivu.
 
-Ako preuzimanje ne uspije (npr. tablica više nije javna), ništa se ne
-objavljuje, a dotadašnji cjenik ostaje važeći.
+**Izmjene tijekom dana** (npr. jedna osoba ujutro, druga popodne) skupe
+se i objave zajedno sljedećeg jutra u 6. Tablica zato uvijek sadrži
+cijene od sutra ujutro. Ako cijena mora vrijediti odmah, istog dana,
+kliknite u postavkama **"Provjeri i objavi sada"**: gumb objavljuje
+odmah ako se cjenik promijenio ili danas još nije objavljen, a isti
+cjenik ne objavljuje dvaput u istom danu.
+
+**Kad nešto ne uspije, dosadašnji cjenik uvijek ostaje važeći** i
+stiže upozorenje e-mailom. To vrijedi kad tablica nije javna ili Google
+ne odgovara, kad tablica nema nijednog retka s podacima (npr. slučajno
+obrisani reci), kad se datoteka ne može spremiti na server i kad je redak
+u postavkama neispravan.
+
+**Propuštena jutarnja provjera** (između 6 i 11 nitko nije otvorio
+stranicu, a nema serverskog crona, vidi "Pokretanje"): ako se tablica
+nije mijenjala, uz dnevnu objavu isti cjenik objavi se kod prvog posjeta
+nakon 11 sati. Ako je promijenjena, plugin ništa ne objavljuje, nego
+pošalje upozorenje, a vi odlučite hoćete li kliknuti "Provjeri i objavi
+sada" ili pričekati sljedeće jutro.
+
+Vrijeme objave mijenja se u kodu (`CJENIK_FROM_HOUR`, `CJENIK_UNTIL_HOUR`).
 
 ## Postavke
 
@@ -164,17 +184,13 @@ datum" i "Cjenik usluga – datum".
   dodate redak u postavkama.
 
 Neispravan redak plugin prijavi na stranici postavki i za njega ništa
-ne objavljuje. Gumb **"Provjeri i objavi sada"** odmah provjeri tablicu
-i objavi ako se cjenik promijenio, ili (uz dnevnu objavu) ako danas još
-nije objavljen. Isti, već objavljeni cjenik ne objavljuje dvaput isti dan.
+ne objavljuje.
 
 ### Upozorenja e-mailom
 
-Ako provjera ne uspije (tablica više nije javna, Google ne odgovara,
-neispravan redak u postavkama) ili jutarnja provjera izostane, a
-tablica ima neobjavljene promjene (vidi "Pokretanje"), plugin šalje
-e-mail. Adrese se upisuju
-u polje **"E-mail za upozorenja"**, više njih odvojenih zarezom (npr.
+Za svaki slučaj iz "Kad nešto ne uspije" i za propuštenu jutarnju
+provjeru s promjenama (oboje u "Što radi") plugin šalje e-mail. Adrese
+se upisuju u polje **"E-mail za upozorenja"**, više njih odvojenih zarezom (npr.
 vi, web administrator i netko iz financija). Ako je polje prazno, poruka
 ide na e-mail administratora stranice (Settings → General). Ista greška
 javlja se najviše jednom dnevno, a dosadašnji cjenik za to vrijeme
@@ -220,31 +236,14 @@ ono što se vidi u ćeliji: ako je ćelija formatirana kao valuta, u
 cjeniku piše npr. `€10.00`. Za čist broj: Format → Number → Number, a
 za decimalni zarez File → Settings → Locale → Croatia.
 
-### Kada mijenjati tablicu
-
-Tablica uvijek sadrži **cijene od sutra ujutro**. Plugin jednom dnevno,
-u 6 sati, objavi stanje tablice (uz dnevnu objavu uvijek, inače samo ako
-se promijenilo od zadnje objave).
-Sve izmjene napravljene tijekom dana (npr. jedna osoba ujutro, druga u
-popodnevnoj smjeni) skupe se i objave zajedno sljedećeg jutra, prije
-roka od 11 sati koji traži pravilnik. Na webu do tada stoji dosadašnji
-cjenik.
-
-- Nove cijene upišite **dan prije** nego što vrijede, bilo kad tijekom
-  dana.
-- Ako cijena mora vrijediti **odmah, istog dana**, upišite je pa u
-  postavkama kliknite **"Provjeri i objavi sada"**: gumb objavljuje
-  odmah, bez čekanja jutra.
-- Ispravak tipfelera je također promjena, pa ulazi u sljedeću objavu.
-
-Vrijeme se mijenja u kodu (`CJENIK_FROM_HOUR`, `CJENIK_UNTIL_HOUR`).
+Nove cijene upišite **dan prije** nego što vrijede. Ispravak tipfelera
+je također promjena, pa ulazi u sljedeću objavu.
 
 ## Pokretanje
 
-Plugin radi i **samo s ugrađenim WordPress cronom**: provjera se
-pokreće pri posjetima stranici, svaki puni sat, a objavljuje između 6
-i 11 sati. Ako između 6 i 11 nitko ne posjeti stranicu, objava tog
-dana izostane i promjene čekaju sljedeće jutro.
+Plugin radi i **samo s ugrađenim WordPress cronom**, koji se pokreće
+pri posjetima stranici. Ako između 6 i 11 nitko ne posjeti stranicu,
+jutarnja provjera izostane (što se tada događa: "Što radi").
 
 Za stranice s malo posjeta preporučujemo serverski cron (npr. cPanel →
 Cron Jobs) koji svaki sat poziva WordPress cron:
@@ -260,13 +259,6 @@ može svaki sat otvoriti adresu
 `https://www.vasa-stranica.hr/wp-cron.php?doing_wp_cron`, bez pristupa
 serveru. Dovoljno je i da netko između 6 i 11 sati otvori stranicu ili
 se prijavi u WordPress admin, jer i to pokreće provjeru.
-
-Ako jutarnja provjera izostane, a tablica se nije mijenjala, uz dnevnu
-objavu isti cjenik objavi se kod prvog posjeta nakon 11 sati, a bez nje
-ništa se ne događa (stari cjenik i dalje vrijedi). Ako je tablica promijenjena,
-plugin kod prvog posjeta nakon 11 sati ništa ne objavljuje, nego pošalje
-upozorenje e-mailom i prikaže ga u postavkama. Tada sami odlučite hoćete
-li kliknuti "Provjeri i objavi sada" ili pričekati sljedeće jutro.
 
 **Ne postavljati** `DISABLE_WP_CRON` u `wp-config.php` ako serverski
 cron ne radi barem svakih nekoliko minuta: to zaustavlja zakazane
@@ -297,12 +289,20 @@ dohvaćati cjenik, pa stranicu i mapu `cjenici` ne treba blokirati.
 Ako se CSV datoteka ručno obriše iz `uploads/cjenici/`, kod sljedeće
 provjere nestaje i s popisa (nema neispravnih linkova).
 
+## Brisanje plugina
+
+Plugins → deaktivirajte → Delete. Plugin pritom briše svoje postavke
+(cjenike, e-mail adrese, brojače pohrane) i zakazanu provjeru.
+Objavljene CSV datoteke u `wp-content/uploads/cjenici/` **ostaju**,
+jer su javna arhiva cjenika. Ako ih ne trebate, obrišite tu mapu i
+stranicu "Objava cjenika" ručno. Za privremeni prekid dovoljna je
+deaktivacija: postavke tada ostaju.
+
 ## Testovi (lokalno)
 
-`test-cjenik.php` (nije na serveru) provjerava nazive datoteka,
-pretvorbu u točku-zarez, preskakanje naslova iznad tablice, dnevni
-prozor objave (6 do 11 sati), dnevnu objavu i objavu samo kod promjene, broj pohrane,
-arhivu i odbijanje privatne tablice:
+`test-cjenik.php` (nije na serveru) provjerava sve opisano u "Što radi",
+uz ažuriranja i shortcode. Svaka provjera je jedan redak `check(...)` s
+opisom, pa je popis u samoj datoteci:
 
 ```
 wp eval-file test-cjenik.php <javni_google_csv_link> <link_koji_nije_csv>
@@ -337,6 +337,11 @@ cijele brojeve, a ne kao decimale. Za njega je 2.949 *veće* od 2.95
 točke uvijek dvije znamenke (2.91 do 2.99), a nakon 2.99 ide 3.0
 (pa 3.01, 3.02...), nikad 2.100 ili 2.991.
 
+- **2.98**: cjenik čiji je redak maknut iz postavki više ne ostaje
+  "važeći" (arhivira se); tablica bez redaka s podacima se ne objavljuje;
+  djelomično zapisana datoteka (pun disk) ne postaje važeća; brisanje
+  plugina briše i njegove postavke (`uninstall.php`); testovi za
+  ažuriranja i zaostalu bravu; sređen README.
 - **2.97**: ako spremanje datoteke ne uspije, dosadašnji cjenik ostaje
   važeći (prije bi bio označen kao zamijenjen); brava protiv dvije
   istovremene objave; sigurniji dohvat linka (odbija unutarnje adrese
