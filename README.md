@@ -40,8 +40,12 @@ bilo kakve izmjene.
 
 ## Instalacija
 
-1. Na GitHubu: **Code → Download ZIP**, pa u WordPressu **Plugins → Add
-   New → Upload Plugin** i aktivirajte. Na popisu pluginova zove se
+1. Na GitHubu otvorite [zadnji Release](https://github.com/DankasW/sidrene-cijene-wp-plugin/releases/latest)
+   i preuzmite **`cjenik-automatizacija.zip`** (ne "Source code" niti
+   "Code → Download ZIP": ti zipovi imaju drugi naziv mape, pa bi kasnija
+   ažuriranja plugin instalirala kao drugi, zasebni plugin). Zatim u
+   WordPressu **Plugins → Add New → Upload Plugin** i aktivirajte.
+   Potrebni su WordPress 5.3 i PHP 8.1 ili noviji. Na popisu pluginova zove se
    "Sidrene cijene (objava cjenika)".
 2. Google Sheet s cjenikom podijelite kao "Anyone with the link → Viewer".
 3. Nakon aktivacije postavke pluginu su u lijevom izborniku WP admina:
@@ -277,6 +281,14 @@ na svakoj temi, i na onima koje ne ispisuju sadržaj stranica (kao tema
 na ufokus.hr). Stranica "Objava cjenika" u WordPressu mora postojati i
 imati upravo tu adresu (slug). Sadržaj stranice se ne koristi.
 
+**Popis na drugoj stranici: shortcode `[cjenik_link]`.** Ako vaša tema
+normalno ispisuje sadržaj stranica, popis cjenika možete staviti na
+bilo koju stranicu, s bilo kojom adresom (npr. "Cjenik" ili unutar
+stranice "O nama"): u sadržaj stranice upišite `[cjenik_link]`. Popis
+se tada prikazuje unutar vaše teme, s njezinim izgledom. Adresa
+`/objava-cjenika` i dalje radi kao samostalna stranica. Ako je ne
+trebate, stranicu s tom adresom jednostavno ne napravite.
+
 Stranica se namjerno ne sprema u cache (WP-Optimize i slični), inače
 bi posjetitelji i programi za prikupljanje cijena vidjeli stari popis.
 Pravilnik (čl. 5.) traži da automatizirani programi mogu slobodno
@@ -325,6 +337,11 @@ cijele brojeve, a ne kao decimale. Za njega je 2.949 *veće* od 2.95
 točke uvijek dvije znamenke (2.91 do 2.99), a nakon 2.99 ide 3.0
 (pa 3.01, 3.02...), nikad 2.100 ili 2.991.
 
+- **2.97**: ako spremanje datoteke ne uspije, dosadašnji cjenik ostaje
+  važeći (prije bi bio označen kao zamijenjen); brava protiv dvije
+  istovremene objave; sigurniji dohvat linka (odbija unutarnje adrese
+  poslužitelja); zaglavlje traži PHP 8.1 i WordPress 5.3; uklonjen kod
+  za zapise od prije 17.11.2026.; dokumentiran shortcode `[cjenik_link]`.
 - **2.96**: na stranici s cjenicima nema više naslova grupa, linkovi
   glase "Cjenik roba – datum" i "Cjenik usluga – datum" (roba prva).
 - **2.95**: obavijest o novoj verziji i ažuriranje jednim klikom iz

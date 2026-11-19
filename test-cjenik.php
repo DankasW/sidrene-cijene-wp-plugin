@@ -36,6 +36,11 @@ $src =trailingslashit(wp_upload_dir()['basedir']) . 'cjenik-test-izvor.csv';
 $src_url = trailingslashit(wp_upload_dir()['baseurl']) . 'cjenik-test-izvor.csv';
 file_put_contents($src, "Naziv robe,Bazna cijena\nKnjiga,\"10,00\"\n");
 
+// sigurni dohvat odbija unutarnje adrese (osim domene same stranice, ovdje localhost)
+update_option(CJENIK_OPTION_FEEDS, "Lokalno|$oib|ZA_SVA_PRODAJNA_MJESTA|ROBA|" . str_replace('localhost', '127.0.0.1', $src_url));
+[$errors, $n] = cjenik_auto_run(true);
+check(count($errors) === 1 && $n === 0, 'link na unutarnju adresu poslužitelja se odbija');
+
 update_option(CJENIK_OPTION_FEEDS, "Stari|UDRUGA|Adresa|001|$src_url");
 [$errors, $n] = cjenik_auto_run(true);
 check(count($errors) === 1 && $n === 0 && empty(get_option(CJENIK_OPTION_LOG)), 'stari format retka: greška, ništa objavljeno');
@@ -72,6 +77,21 @@ check(wp_remote_retrieve_response_code(wp_remote_get($log[0]['url'])) === 200, '
 check($n === 0 && count(get_option(CJENIK_OPTION_LOG)) === 1, 'nepromijenjen cjenik: nema nove objave');
 
 file_put_contents($src, "Naziv robe,Bazna cijena\nKnjiga,\"12,00\"\n");
+
+// neuspjelo spremanje (na mjestu datoteke je mapa): greška, stari cjenik ostaje važeći, broj pohrane se ne troši
+$blocked = trailingslashit(wp_upload_dir()['basedir']) . 'cjenici/' . cjenik_auto_build_filename("{$oib}_ZA_SVA_PRODAJNA_MJESTA_ROBA", 2, current_time('Ymd'), current_time('Hi'));
+mkdir($blocked);
+[$errors, $n] = cjenik_auto_run(true);
+rmdir($blocked);
+$log = get_option(CJENIK_OPTION_LOG);
+check($n === 0 && count($errors) === 1 && count($log) === 1 && empty($log[0]['replaced']), 'neuspjelo spremanje: greška, stari cjenik ostaje važeći');
+
+// brava: dok traje jedna objava, druga ne kreće
+add_option('cjenik_auto_lock', time(), '', false);
+[$errors, $n] = cjenik_auto_run(true);
+check($n === 0 && strpos($errors[0] ?? '', 'u tijeku') !== false, 'brava: istovremena druga objava se odbija');
+delete_option('cjenik_auto_lock');
+
 [$errors, $n] = cjenik_auto_run(true);
 $log = get_option(CJENIK_OPTION_LOG);
 check($n === 1 && count($log) === 2 && !empty($log[0]['replaced']) && empty($log[1]['replaced']) && strpos($log[1]['file'], '_0002_') !== false, 'promjena: nova objava 0002, stara označena kao zamijenjena');
@@ -151,6 +171,10 @@ $html = cjenik_auto_render_list();
 check(strpos($html, 'važeći') !== false && strpos($html, 'Cjenik roba – ') !== false && strpos($html, 'Cjenik usluga – ') !== false
     && strpos($html, 'Knjige') === false && strpos($html, '<h3') === false && strpos($html, 'Cjenik roba') < strpos($html, 'Cjenik usluga'),
     'popis: "Cjenik roba/usluga – datum", bez naslova, roba prva');
+
+check(do_shortcode('[cjenik_link]') === $html, 'shortcode [cjenik_link] ispisuje isti popis');
+check(get_file_data(WP_PLUGIN_DIR . '/cjenik-automatizacija/cjenik-automatizacija.php', ['p' => 'Requires PHP'])['p'] === '8.1', 'zaglavlje traži PHP 8.1');
+check(get_option('cjenik_auto_lock') === false, 'brava je otpuštena nakon objave');
 
 // dva prodajna mjesta s robom: tada se uz naziv dodaje naslov iz postavki
 $saved = get_option(CJENIK_OPTION_LOG);
