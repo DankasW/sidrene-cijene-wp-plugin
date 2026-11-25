@@ -28,6 +28,16 @@ check(substr_count($out, "\xEF\xBB\xBF") === 1, 'točno jedan UTF-8 BOM');
 $rows = array_map(fn($l) => str_getcsv($l, ';', '"', ''), explode("\n", trim(substr($out, 3))));
 check($rows === [['Naziv', 'Cijena 10.9.2026.', 'Opis'], ['Knjiga "A"', '10,00', 'a; b']], 'pretvorba u točku-zarez, bez prijeloma i praznih redaka');
 
+// otisak cijena: kozmetika ga ne mijenja, svaka promjena cijene, novi ili uklonjen proizvod ga mijenja
+$fp = fn($s) => cjenik_auto_price_fingerprint("\xEF\xBB\xBF" . $s);
+$base = $fp("ŠIFRA;NAZIV;MPC;CIJENA 10.9.2026.\n1;Knjiga;10;10\n2;Priručnik;5;5\n");
+check($fp("ŠIFRA;NAZIV;MPC;CIJENA 10.9.2026.\n1;Knjiga (2. izdanje);10;10\n2;Priručnik;5;5\n") === $base, 'otisak: promjena naziva nije nova cijena');
+check($fp("ŠIFRA;NAZIV;MPC;CIJENA 10.9.2026.;DOSTUPNOST\n2;Priručnik;5;5;DA\n1;Knjiga;10;10;DA\n") === $base, 'otisak: novi stupac bez cijena i drugi redoslijed redaka nisu nova cijena');
+check($fp("ŠIFRA;NAZIV;MPC;CIJENA 10.9.2026.\n1;Knjiga;12;10\n2;Priručnik;5;5\n") !== $base, 'otisak: promijenjena MPC je nova cijena');
+check($fp("ŠIFRA;NAZIV;MPC;CIJENA 10.9.2026.\n1;Knjiga;10;10\n2;Priručnik;5;5\n3;Nova;7;7\n") !== $base, 'otisak: novi proizvod je nova cijena');
+check($fp("ŠIFRA;NAZIV;MPC;CIJENA 10.9.2026.\n1;Knjiga;10;10\n") !== $base, 'otisak: uklonjen proizvod je nova cijena');
+check($fp("ŠIFRA;NAZIV\n1;Knjiga\n") !== $fp("ŠIFRA;NAZIV\n1;Knjiga A\n"), 'otisak: bez stupaca s cijenama svaka promjena se računa');
+
 // --- objava preko lokalne izvorne datoteke koju test mijenja ---
 delete_option(CJENIK_OPTION_LOG);
 delete_option(CJENIK_OPTION_COUNTERS);
@@ -107,6 +117,7 @@ file_put_contents($src, "Naziv robe,Bazna cijena\nKnjiga,\"12,00\"\n");
 [$errors, $n] = cjenik_auto_run(true);
 $log = get_option(CJENIK_OPTION_LOG);
 check($n === 1 && count($log) === 2 && !empty($log[0]['replaced']) && empty($log[1]['replaced']) && strpos($log[1]['file'], '_0002_') !== false, 'promjena: nova objava 0002, stara označena kao zamijenjena');
+check(empty($log[0]['new_prices']) && !empty($log[1]['new_prices']) && substr_count(cjenik_auto_render_list(), 'Nove cijene') === 1, 'promjena cijene: oznaka "Nove cijene" samo uz novu objavu');
 
 // zamijenjen prije 14 dana ostaje, prije 16 dana nestaje; važeći ostaje i kad je star
 $log[0]['replaced'] -= 14 * DAY_IN_SECONDS;

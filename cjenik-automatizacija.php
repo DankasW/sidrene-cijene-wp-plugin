@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i objavljuje ga na /objava-cjenika (svaki dan ili samo kad se promijeni, po izboru) prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.99
+ * Version: 3.0
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  * Requires at least: 5.3
@@ -156,6 +156,19 @@ function cjenik_auto_is_csv($body) {
 }
 
 // Pravilnik: UTF-8, stupci odvojeni točkom-zarezom. Prijelomi reda unutar ćelija se uklanjaju.
+// Otisak samo cijena: stupci čiji naslov sadrži "cijen" ili "MPC", po retku čiji je ključ prvi stupac.
+// Promjena naziva, opisa ili stupaca bez cijena ne mijenja otisak; nova, uklonjena ili promijenjena cijena mijenja.
+function cjenik_auto_price_fingerprint($csv) {
+    $rows = array_map(fn($l) => str_getcsv($l, ';', '"', ''), array_filter(explode("\n", preg_replace('/^\xEF\xBB\xBF/', '', $csv)), 'strlen'));
+    $header = array_shift($rows) ?? [];
+    $cols = array_keys(array_filter($header, fn($h) => preg_match('/cijen|mpc/iu', $h)));
+    if (!$cols) return md5($csv); // bez prepoznatih stupaca s cijenama svaka promjena se računa kao nova cijena
+    $prices = [];
+    foreach ($rows as $r) $prices[$r[0] ?? ''] = array_map(fn($i) => $r[$i] ?? '', $cols);
+    ksort($prices);
+    return md5(json_encode($prices));
+}
+
 function cjenik_auto_to_semicolon_csv($body) {
     $in = fopen('php://temp', 'r+');
     fwrite($in, preg_replace('/^\xEF\xBB\xBF/', '', $body));
@@ -285,6 +298,10 @@ function cjenik_auto_run_locked($manual) {
         }
         $counters[$key] = $broj;
 
+        // "Nove cijene": usporedba s prethodnom objavljenom datotekom (ako je još na disku), samo stupci s cijenama
+        $prev = $current !== null ? @file_get_contents(trailingslashit($dir) . $log[$current]['file']) : false;
+        $new_prices = $prev !== false && cjenik_auto_price_fingerprint($prev) !== cjenik_auto_price_fingerprint($body);
+
         if ($current !== null) $log[$current]['replaced'] = $now;
         $log[] = [
             'key' => $key,
@@ -293,6 +310,7 @@ function cjenik_auto_run_locked($manual) {
             'url' => trailingslashit($base_url) . $filename,
             'hash' => $hash,
             'timestamp' => $now,
+            'new_prices' => $new_prices,
         ];
         $published++;
     }
@@ -350,7 +368,7 @@ function cjenik_auto_status_text() {
     $status = get_option(CJENIK_OPTION_STATUS, []);
     $lines = [];
     foreach (get_option(CJENIK_OPTION_LOG, []) as $e) {
-        $state = empty($e['replaced']) ? 'VAŽEĆI' : 'zamijenjen ' . date_i18n('d.m.Y. H:i', $e['replaced']);
+        $state = (empty($e['replaced']) ? 'VAŽEĆI' : 'zamijenjen ' . date_i18n('d.m.Y. H:i', $e['replaced'])) . (empty($e['new_prices']) ? '' : ', nove cijene');
         $lines[] = sprintf("- %s, objavljen %s (%s)\n  %s", $e['label'], date_i18n('d.m.Y. H:i', $e['timestamp']), $state, $e['url']);
     }
     $text = "Stranica s cjenicima: " . home_url('/objava-cjenika/') . "\n\n"
@@ -453,6 +471,7 @@ function cjenik_auto_render_list() {
         $out .= '<ul class="cjenik-lista">';
         foreach ($entries as $entry) {
             $note = empty($entry['replaced']) ? '<strong>važeći</strong>' : 'zamijenjen ' . esc_html(date_i18n('d.m.Y. H:i', $entry['replaced']));
+            if (!empty($entry['new_prices'])) $note .= ', <strong>Nove cijene</strong>';
             $out .= sprintf(
                 '<li><a href="%s">%s – %s</a> <small>(%s)</small></li>',
                 esc_url($entry['url']),
