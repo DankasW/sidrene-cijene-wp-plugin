@@ -337,6 +337,8 @@ cijele brojeve, a ne kao decimale. Za njega je 2.949 *veće* od 2.95
 točke uvijek dvije znamenke (2.91 do 2.99), a nakon 2.99 ide 3.0
 (pa 3.01, 3.02...), nikad 2.100 ili 2.991.
 
+- **2.99**: kad spremanje datoteke ne uspije, upozorenje sadrži stvarni razlog
+  koji javi server (npr. "Permission denied" ili "No space left on device").
 - **2.98**: cjenik čiji je redak maknut iz postavki više ne ostaje
   "važeći" (arhivira se); tablica bez redaka s podacima se ne objavljuje;
   djelomično zapisana datoteka (pun disk) ne postaje važeća; brisanje

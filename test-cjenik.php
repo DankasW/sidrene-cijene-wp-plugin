@@ -85,6 +85,7 @@ mkdir($blocked);
 rmdir($blocked);
 $log = get_option(CJENIK_OPTION_LOG);
 check($n === 0 && count($errors) === 1 && count($log) === 1 && empty($log[0]['replaced']), 'neuspjelo spremanje: greška, stari cjenik ostaje važeći');
+check(strpos($errors[0], 'Razlog: file_put_contents(') !== false, 'neuspjelo spremanje: poruka sadrži stvarni razlog sa servera');
 
 // brava: dok traje jedna objava, druga ne kreće
 add_option('cjenik_auto_lock', time(), '', false);

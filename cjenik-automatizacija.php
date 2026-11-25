@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sidrene cijene (objava cjenika)
  * Description: Jednom dnevno (od 6 sati, najkasnije do 11) provjerava cjenik u Google Sheetu i objavljuje ga na /objava-cjenika (svaki dan ili samo kad se promijeni, po izboru) prema Pravilniku o načinu objave cjenika proizvoda (NN 132/2026, https://narodne-novine.nn.hr/eli/sluzbeni/2026/132/1584/pdf), stanje propisa 16.11.2026. Upute: README.md u mapi plugina.
- * Version: 2.98
+ * Version: 2.99
  * Author: Daniel Wurzberg (Udruga Fokus)
  * License: GPL-2.0-or-later
  * Requires at least: 5.3
@@ -272,10 +272,14 @@ function cjenik_auto_run_locked($manual) {
         $broj = ($counters[$key] ?? 0) + 1;
         $filename = cjenik_auto_build_filename($key, $broj, current_time('Ymd'), current_time('Hi'));
         $path = trailingslashit($dir) . $filename;
-        if (@file_put_contents($path, $body) !== strlen($body)) {
+        error_clear_last();
+        $written = @file_put_contents($path, $body);
+        if ($written !== strlen($body)) {
             // ni djelomično zapisana datoteka (pun disk) ne smije postati važeća
             if (file_exists($path) && !is_dir($path)) @unlink($path);
-            $errors[] =sprintf('%s: datoteku %s nije moguće spremiti u %s (prava pristupa ili pun disk).', $feed['label'], $filename, $dir);
+            // stvarni razlog sa servera, jer @ inače skriva poruku i u logu nema traga
+            $why = $written === false ? (error_get_last()['message'] ?? 'nepoznat razlog') : sprintf('zapisano %d od %d bajtova', $written, strlen($body));
+            $errors[] = sprintf('%s: datoteku %s nije moguće spremiti u %s. Razlog: %s', $feed['label'], $filename, $dir, $why);
             unset($done[$key]); // pokušaj ponovno za sat vremena
             continue;
         }
