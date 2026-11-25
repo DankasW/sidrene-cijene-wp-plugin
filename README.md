@@ -79,15 +79,6 @@ bilo kakve izmjene.
 6. Na adresi **/objava-cjenika/** (na ufokus.hr:
    https://www.ufokus.hr/objava-cjenika/) prikazuje važeće cjenike i
    arhivu.
-7. **Oznaka "Nove cijene"** stoji uz objavu u kojoj su se cijene
-   promijenile u odnosu na prethodnu, i ostaje uz nju i u arhivi.
-   Uspoređuju se samo stupci čiji naslov sadrži "cijen" ili "MPC", red po
-   red prema **prvom stupcu** (npr. šifri). Nova, uklonjena ili
-   promijenjena cijena, te novi ili uklonjeni proizvod, dobivaju oznaku.
-   Promjena naziva, opisa, JM ili stupaca bez cijena ne dobiva. Ako
-   promijenite vrijednost u prvom stupcu (šifru), to se vidi kao uklonjen
-   i nov proizvod. Ako tablica nema nijedan stupac s cijenom u naslovu,
-   oznaku dobiva svaka promjena.
 
 **Izmjene tijekom dana** (npr. jedna osoba ujutro, druga popodne) skupe
 se i objave zajedno sljedećeg jutra u 6. Tablica zato uvijek sadrži
@@ -346,8 +337,9 @@ cijele brojeve, a ne kao decimale. Za njega je 2.949 *veće* od 2.95
 točke uvijek dvije znamenke (2.91 do 2.99), a nakon 2.99 ide 3.0
 (pa 3.01, 3.02...), nikad 2.100 ili 2.991.
 
-- **3.0**: oznaka "Nove cijene" uz objavu u kojoj su se promijenile
-  cijene (ne i kod promjene naziva ili opisa).
+- **3.01**: oznaka "Nove cijene" uklonjena (pravilnik je ne traži). Za objavu
+  samo kod promjene isključite "Objavi link svaki dan".
+- **3.0**: oznaka "Nove cijene" (uklonjena u 3.01).
 - **2.99**: kad spremanje datoteke ne uspije, upozorenje sadrži stvarni razlog
   koji javi server (npr. "Permission denied" ili "No space left on device").
 - **2.98**: cjenik čiji je redak maknut iz postavki više ne ostaje
